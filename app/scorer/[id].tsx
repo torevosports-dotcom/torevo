@@ -12,13 +12,14 @@ import { teamScores, playerAgg } from '../../lib/scoring'
 export default function Scorer() {
   const router = useRouter()
   const { id } = useLocalSearchParams<{ id: string }>()
-  const { getOrCreateMatch, saveMatch, listMatchPlayers, addMatchPlayer, postCommentary } = useEventStore()
+  const { getOrCreateMatch, saveMatch, listMatchPlayers, addMatchPlayer, postCommentary, fetchEventRoster } = useEventStore()
 
   const [loading, setLoading] = useState(true)
   const [event, setEvent] = useState<any>(null)
   const [match, setMatch] = useState<any>(null)
   const [players, setPlayers] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
+  const [roster, setRoster] = useState<{ teamName: string; members: { name: string; phone: string }[] }[]>([])
   const [selected, setSelected] = useState<string | null>(null)
 
   const [teamA, setTeamA] = useState(''), [teamB, setTeamB] = useState(''), [status, setStatus] = useState('')
@@ -42,6 +43,7 @@ export default function Scorer() {
       if (ev.status !== 'live') await supabase.from('events').update({ status: 'live' }).eq('id', ev.id)
       setMatch(m); setTeamA(m.team_a); setTeamB(m.team_b); setStatus(m.status)
       setPlayers(await listMatchPlayers(m.id))
+      setRoster(await fetchEventRoster(ev.id))
       await loadEvents(m.id)
       setLoading(false)
     })()
@@ -203,6 +205,23 @@ export default function Scorer() {
               </Pressable>
             ))}
           </View>
+          {roster.length > 0 && (
+            <View style={{ marginBottom: 10 }}>
+              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11, color: THEME.textSecondary, marginBottom: 6 }}>
+                Tap a registered player → adds to Team {pSide.toUpperCase()}
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                {roster.flatMap(t => t.members).filter(m => !players.some(p => p.player_name === m.name)).map((m, i) => (
+                  <Pressable key={i}
+                    onPress={async () => { await addMatchPlayer(match.id, { name: m.name, phone: m.phone || undefined, team_side: pSide }); setPlayers(await listMatchPlayers(match.id)) }}
+                    style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 14, backgroundColor: '#EFEFEF' }}>
+                    <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: THEME.text }}>+ {m.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 10, color: THEME.textTertiary, marginTop: 8 }}>…or add someone not registered:</Text>
+            </View>
+          )}
           <TextInput value={pName} onChangeText={setPName} placeholder="Player name" placeholderTextColor={THEME.textTertiary} style={input} />
           <TextInput value={pPhone} onChangeText={setPPhone} placeholder="Mobile number (for their stats profile)" keyboardType="phone-pad" placeholderTextColor={THEME.textTertiary} style={[input, { marginTop: 8 }]} />
           <Pressable onPress={onAddPlayer} style={{ marginTop: 10, paddingVertical: 11, borderRadius: 12, backgroundColor: '#000', alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}>

@@ -43,6 +43,7 @@ interface EventStore {
   saveTeamMembers: (ticketId: string, members: { name: string; phone: string }[]) => Promise<void>
   fetchTeamMembers: (ticketId: string) => Promise<any[]>
   getMyTicketForEvent: (eventId: string, userId: string) => Promise<any>
+  fetchEventRoster: (eventId: string) => Promise<{ teamName: string; members: { name: string; phone: string }[] }[]>
   fetchCorporatePackages: () => Promise<void>
   subscribeToLiveMatches: () => () => void
 
@@ -354,6 +355,25 @@ export const useEventStore = create<EventStore>((set, get) => ({
       .eq('event_id', eventId).eq('user_id', userId).neq('status', 'cancelled')
       .maybeSingle()
     return data
+  },
+
+  // All registered teams for an event + their members — fed to the Scorer so
+  // every tap credits a real registered player (mapped by phone).
+  fetchEventRoster: async (eventId) => {
+    const { data: tk } = await supabase
+      .from('tickets').select('id, team_name, participant_name')
+      .eq('event_id', eventId).neq('status', 'cancelled')
+    if (!tk?.length) return []
+    const ids = tk.map((t: any) => t.id)
+    const { data: mem } = await supabase.from('ticket_members').select('*').in('ticket_id', ids)
+    return tk.map((t: any) => {
+      const ms = (mem ?? []).filter((m: any) => m.ticket_id === t.id)
+      return {
+        teamName: t.team_name || t.participant_name || 'Team',
+        members: ms.length ? ms.map((m: any) => ({ name: m.name, phone: m.phone || '' }))
+          : [{ name: t.participant_name || 'Player', phone: '' }],
+      }
+    })
   },
 
   fetchCorporatePackages: async () => {

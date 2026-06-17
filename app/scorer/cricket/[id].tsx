@@ -12,11 +12,13 @@ export default function CricketScorer() {
   const router = useRouter()
   const { id } = useLocalSearchParams<{ id: string }>()
   const getOrCreateMatch = useEventStore(s => s.getOrCreateMatch)
+  const fetchEventRoster = useEventStore(s => s.fetchEventRoster)
 
   const [loading, setLoading] = useState(true)
   const [event, setEvent] = useState<any>(null)
   const [cm, setCm] = useState<any>(null)         // cricket_matches row
   const [balls, setBalls] = useState<any[]>([])   // ALL balls for this match
+  const [rosterNames, setRosterNames] = useState<string[]>([])
 
   // setup inputs
   const [overs, setOvers] = useState('20')
@@ -40,6 +42,8 @@ export default function CricketScorer() {
       const { data: ev } = await supabase.from('events').select('*').eq('id', id).single()
       if (!ev) { setLoading(false); return }
       setEvent(ev)
+      const r = await fetchEventRoster(ev.id)
+      setRosterNames([...new Set(r.flatMap((t: any) => t.members.map((m: any) => m.name)))] as string[])
       let { data: m } = await supabase.from('cricket_matches').select('*').eq('event_id', ev.id).maybeSingle()
       if (!m) {
         const ins = await supabase.from('cricket_matches').insert({ event_id: ev.id, team_a: 'Team A', team_b: 'Team B' }).select().single()
@@ -154,6 +158,18 @@ export default function CricketScorer() {
   const input = { backgroundColor: '#F4F4F4', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontFamily: 'Inter_500Medium', fontSize: 13, color: THEME.text } as any
   const title = { fontFamily: 'Inter_700Bold', fontSize: 13, color: THEME.text, marginBottom: 10 } as any
 
+  // Tappable chips of registered players → ensures cricket names are real registrants.
+  const nameChips = (onPick: (n: string) => void) => rosterNames.length === 0 ? null : (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+      {rosterNames.map((n, i) => (
+        <Pressable key={i} onPress={() => onPick(n)} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 13, backgroundColor: '#EFEFEF' }}>
+          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11, color: THEME.text }}>{n}</Text>
+        </Pressable>
+      ))}
+    </View>
+  )
+  const fillSetup = (n: string) => { if (!sStriker) setSStriker(n); else if (!sNon) setSNon(n); else if (!sBowler) setSBowler(n) }
+
   if (loading) return <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={THEME.text} /></SafeAreaView>
   if (!cm) return <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: 'Inter_600SemiBold', color: THEME.textSecondary }}>Match not found.</Text></SafeAreaView>
 
@@ -192,6 +208,7 @@ export default function CricketScorer() {
             <TextInput value={sStriker} onChangeText={setSStriker} placeholder="Striker *" placeholderTextColor={THEME.textTertiary} style={input} />
             <TextInput value={sNon} onChangeText={setSNon} placeholder="Non-striker" placeholderTextColor={THEME.textTertiary} style={[input, { marginTop: 8 }]} />
             <TextInput value={sBowler} onChangeText={setSBowler} placeholder="Opening bowler" placeholderTextColor={THEME.textTertiary} style={[input, { marginTop: 8 }]} />
+            {nameChips(fillSetup)}
             <Pressable onPress={startMatch} style={{ marginTop: 12, paddingVertical: 12, borderRadius: 12, backgroundColor: '#000', alignItems: 'center' }}>
               <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: '#fff' }}>Start Match</Text>
             </Pressable>
@@ -212,6 +229,7 @@ export default function CricketScorer() {
             <TextInput value={sStriker} onChangeText={setSStriker} placeholder="New striker *" placeholderTextColor={THEME.textTertiary} style={input} />
             <TextInput value={sNon} onChangeText={setSNon} placeholder="New non-striker" placeholderTextColor={THEME.textTertiary} style={[input, { marginTop: 8 }]} />
             <TextInput value={sBowler} onChangeText={setSBowler} placeholder="Opening bowler" placeholderTextColor={THEME.textTertiary} style={[input, { marginTop: 8 }]} />
+            {nameChips(fillSetup)}
             <Pressable onPress={startSecondInnings} style={{ marginTop: 12, paddingVertical: 12, borderRadius: 12, backgroundColor: '#000', alignItems: 'center' }}>
               <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: '#fff' }}>Start 2nd Innings</Text>
             </Pressable>
@@ -293,6 +311,7 @@ export default function CricketScorer() {
               <TextInput value={newBatsman} onChangeText={setNewBatsman} placeholder="New batsman" placeholderTextColor={THEME.textTertiary} style={[input, { flex: 1 }]} />
               <Pressable onPress={confirmBatsman} style={{ paddingHorizontal: 16, borderRadius: 10, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 12 }}>In</Text></Pressable>
             </View>
+            {nameChips(setNewBatsman)}
           </View>
         )}
         {needBowler && (
@@ -302,6 +321,7 @@ export default function CricketScorer() {
               <TextInput value={newBowler} onChangeText={setNewBowler} placeholder="New bowler" placeholderTextColor={THEME.textTertiary} style={[input, { flex: 1 }]} />
               <Pressable onPress={confirmBowler} style={{ paddingHorizontal: 16, borderRadius: 10, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 12 }}>Set</Text></Pressable>
             </View>
+            {nameChips(setNewBowler)}
           </View>
         )}
 
