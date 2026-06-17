@@ -38,6 +38,11 @@ interface EventStore {
   addMatchPlayer: (matchId: string, p: { name: string; phone?: string; team_side: 'a' | 'b' }) => Promise<any>
   bumpPlayer: (rowId: string, score: number, detail: string, stats?: any) => Promise<void>
   postCommentary: (matchId: string, timeLabel: string, text: string) => Promise<void>
+
+  // ── Team rosters ──
+  saveTeamMembers: (ticketId: string, members: { name: string; phone: string }[]) => Promise<void>
+  fetchTeamMembers: (ticketId: string) => Promise<any[]>
+  getMyTicketForEvent: (eventId: string, userId: string) => Promise<any>
   fetchCorporatePackages: () => Promise<void>
   subscribeToLiveMatches: () => () => void
 
@@ -314,6 +319,41 @@ export const useEventStore = create<EventStore>((set, get) => ({
 
   postCommentary: async (matchId, timeLabel, text) => {
     await supabase.from('live_match_updates').insert({ match_id: matchId, time_label: timeLabel, text })
+  },
+
+  // ── Team rosters ──────────────────────────────────────────────────────────
+  // Replace a ticket's roster: upsert each member into the phone-keyed players
+  // directory, then rewrite ticket_members. Stats later key off player_id/phone.
+  saveTeamMembers: async (ticketId, members) => {
+    await supabase.from('ticket_members').delete().eq('ticket_id', ticketId)
+    for (const m of members) {
+      const name = (m.name ?? '').trim()
+      if (!name) continue
+      const phone = (m.phone ?? '').trim()
+      let playerId: string | null = null
+      if (phone) {
+        const { data: ex } = await supabase.from('players').select('id').eq('phone', phone).maybeSingle()
+        if (ex) playerId = ex.id
+        else {
+          const { data: np } = await supabase.from('players').insert({ phone, name }).select('id').single()
+          playerId = np?.id ?? null
+        }
+      }
+      await supabase.from('ticket_members').insert({ ticket_id: ticketId, name, phone: phone || null, player_id: playerId })
+    }
+  },
+
+  fetchTeamMembers: async (ticketId) => {
+    const { data } = await supabase.from('ticket_members').select('*').eq('ticket_id', ticketId).order('created_at')
+    return data ?? []
+  },
+
+  getMyTicketForEvent: async (eventId, userId) => {
+    const { data } = await supabase
+      .from('tickets').select('*')
+      .eq('event_id', eventId).eq('user_id', userId).neq('status', 'cancelled')
+      .maybeSingle()
+    return data
   },
 
   fetchCorporatePackages: async () => {

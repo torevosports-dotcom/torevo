@@ -22,6 +22,8 @@ export default function EventDetailScreen() {
   const loading = useEventStore((s) => s.loading)
   const registerForEvent = useEventStore((s) => s.registerForEvent)
   const createTicketInDB = useEventStore((s) => s.createTicketInDB)
+  const saveTeamMembers = useEventStore((s) => s.saveTeamMembers)
+  const getMyTicketForEvent = useEventStore((s) => s.getMyTicketForEvent)
   const user = useAuthStore((s) => s.user)
   const updateWallet = useAuthStore((s) => s.updateWallet)
   const updateUser = useAuthStore((s) => s.updateUser)
@@ -32,6 +34,8 @@ export default function EventDetailScreen() {
   const [participantName, setParticipantName] = useState(user?.name ?? '')
   const [phone, setPhone] = useState(user?.phone ?? '')
   const [teamName, setTeamName] = useState('')
+  const [members, setMembers] = useState<{ name: string; phone: string }[]>([])
+  const [myTicketId, setMyTicketId] = useState<string | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'upi' | 'card'>('wallet')
   const [upiId, setUpiId] = useState('')
   const [paying, setPaying] = useState(false)
@@ -39,6 +43,16 @@ export default function EventDetailScreen() {
   useEffect(() => {
     if (events.length === 0) fetchEvents()
   }, [])
+
+  // For team events: seed the roster inputs and detect an existing registration.
+  useEffect(() => {
+    const ev = events.find((e) => e.id === id)
+    if (!ev || !user || !ev.team_config) return
+    const n = ev.team_config.max_players || 2
+    setMembers((prev) => prev.length ? prev : Array.from({ length: n }, (_, i) =>
+      i === 0 ? { name: user.name ?? '', phone: user.phone ?? '' } : { name: '', phone: '' }))
+    getMyTicketForEvent(ev.id, user.id).then((t) => setMyTicketId(t?.id ?? null))
+  }, [events, id, user?.id])
 
   const event = events.find((e) => e.id === id) ?? events[0]
 
@@ -128,6 +142,10 @@ export default function EventDetailScreen() {
         else updateWallet(-event.entry_fee)
       }
       registerForEvent(event.id, ticket)
+      // Save the team roster (phone numbers) against this ticket.
+      if (event.team_config) {
+        try { await saveTeamMembers(ticket.id, members); setMyTicketId(ticket.id) } catch {}
+      }
       setStep('success')
     } catch (err: any) {
       if (err?.code !== 2) {
@@ -179,6 +197,11 @@ export default function EventDetailScreen() {
           <Pressable onPress={() => router.push('/(tabs)/tickets' as any)} style={{ marginTop: 16, width: '100%', backgroundColor: THEME.orange, paddingVertical: 16, borderRadius: 18, alignItems: 'center' }}>
             <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: 'white' }}>View My Ticket</Text>
           </Pressable>
+          {event.team_config && (
+            <Pressable onPress={() => router.push(`/team/${event.id}` as any)} style={{ marginTop: 10, width: '100%', backgroundColor: '#F4F4F5', paddingVertical: 14, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: '#E4E4E7' }}>
+              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: '#09090B' }}>Manage Team Roster</Text>
+            </Pressable>
+          )}
           <Pressable onPress={() => router.canGoBack() ? router.back() : router.push('/')} style={{ marginTop: 10, paddingVertical: 8 }}>
             <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#A1A1AA' }}>Back to events</Text>
           </Pressable>
@@ -402,6 +425,30 @@ export default function EventDetailScreen() {
                   <TextInput placeholder="Your in-game ID" placeholderTextColor="#A1A1AA" style={{ borderWidth: 1.5, borderColor: '#E4E4E7', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontFamily: 'Inter_400Regular', fontSize: 14, color: '#09090B' }} />
                 </View>
               )}
+
+              {/* Team roster — every teammate's mobile number */}
+              {event.team_config && (
+                <View style={{ marginBottom: 8 }}>
+                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 13, color: '#09090B', marginBottom: 2 }}>
+                    Team players · {event.team_config.max_players} required
+                  </Text>
+                  <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: '#71717A', marginBottom: 10 }}>
+                    Add each teammate's mobile number — you can edit these any time until the event ends.
+                  </Text>
+                  {members.map((m, i) => (
+                    <View key={i} style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+                      <TextInput value={m.name}
+                        onChangeText={(t) => setMembers((ms) => ms.map((x, j) => j === i ? { ...x, name: t } : x))}
+                        placeholder={i === 0 ? 'You' : `Player ${i + 1}`} placeholderTextColor="#A1A1AA"
+                        style={{ flex: 1.2, borderWidth: 1.5, borderColor: m.name ? '#09090B' : '#E4E4E7', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontFamily: 'Inter_400Regular', fontSize: 13, color: '#09090B' }} />
+                      <TextInput value={m.phone}
+                        onChangeText={(t) => setMembers((ms) => ms.map((x, j) => j === i ? { ...x, phone: t } : x))}
+                        placeholder="Mobile" placeholderTextColor="#A1A1AA" keyboardType="phone-pad"
+                        style={{ flex: 1, borderWidth: 1.5, borderColor: m.phone ? '#09090B' : '#E4E4E7', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontFamily: 'Inter_400Regular', fontSize: 13, color: '#09090B' }} />
+                    </View>
+                  ))}
+                </View>
+              )}
             </Animated.View>
           )}
 
@@ -487,6 +534,14 @@ export default function EventDetailScreen() {
               ? new Date() > new Date(event.registration_deadline)
               : false
             const blocked = isFull || deadlinePassed || event.status === 'completed' || event.status === 'cancelled'
+            // Already registered a team → offer roster editing instead of re-register.
+            if (myTicketId && event.team_config) {
+              return (
+                <Pressable onPress={() => router.push(`/team/${event.id}` as any)} style={{ flex: 1, backgroundColor: '#09090B', paddingVertical: 15, borderRadius: 18, alignItems: 'center' }}>
+                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: 'white' }}>Edit Team Roster</Text>
+                </Pressable>
+              )
+            }
             const btnLabel = isFull ? 'Sold Out'
               : deadlinePassed ? 'Registration Closed'
               : event.status === 'completed' ? 'Event Ended'
@@ -498,7 +553,7 @@ export default function EventDetailScreen() {
                   <Text style={{ fontFamily: 'Inter_900Black', fontSize: 18, color: '#09090B' }}>
                     {event.entry_fee === 0 ? 'Free' : formatCurrency(event.entry_fee)}
                   </Text>
-                  <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 10, color: '#A1A1AA' }}>per person</Text>
+                  <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 10, color: '#A1A1AA' }}>{event.team_config ? 'per team' : 'per person'}</Text>
                 </View>
                 <Pressable
                   onPress={() => blocked ? null : setStep('register')}

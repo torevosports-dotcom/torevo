@@ -92,6 +92,23 @@ try {
   ok('host can create cricket_match', !!cm)
   const { data: cb } = await sb.from('cricket_balls').insert({ cmatch_id: cm.id, innings: 1, over_no: 0, ball_in_over: 1, legal: true, striker: 'S', non_striker: 'N', bowler: 'X', runs_off_bat: 4, extra_type: null, extra_runs: 0, wicket: false }).select().single()
   ok('host can record cricket ball', !!cb)
+
+  // 12. TEAM ROSTER (ticket_members) — register a team then add/edit members
+  const { data: tid3 } = await sb.rpc('register_for_event', { p_event_id: ev3.id, p_participant_name: 'Captain', p_team_name: 'Test XI', p_payment_method: 'wallet', p_razorpay_payment_id: null, p_razorpay_order_id: null })
+  ok('register team (captain) for team event', !!tid3)
+  const { data: pl } = await sb.from('players').upsert({ phone: '+919998887777', name: 'Mate One' }, { onConflict: 'phone' }).select('id').single()
+  const { error: tmErr } = await sb.from('ticket_members').insert([
+    { ticket_id: tid3, name: 'Captain', phone: '+919990001111' },
+    { ticket_id: tid3, name: 'Mate One', phone: '+919998887777', player_id: pl?.id },
+  ])
+  ok('captain can add team members (by phone)', !tmErr, tmErr?.message)
+  let { data: tms } = await sb.from('ticket_members').select('*').eq('ticket_id', tid3)
+  ok('roster has 2 members', tms?.length === 2, JSON.stringify(tms?.length))
+  // edit roster: replace members
+  await sb.from('ticket_members').delete().eq('ticket_id', tid3)
+  await sb.from('ticket_members').insert({ ticket_id: tid3, name: 'Captain', phone: '+919990001111' })
+  ;({ data: tms } = await sb.from('ticket_members').select('*').eq('ticket_id', tid3))
+  ok('roster editable (now 1 member)', tms?.length === 1, JSON.stringify(tms?.length))
 } catch (e) {
   ok('no unexpected exception', false, e.message)
 } finally {

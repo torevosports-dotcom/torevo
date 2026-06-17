@@ -90,6 +90,10 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="events/[id]" options={{ presentation: 'card' }} />
+        <Stack.Screen name="team/[id]" options={{ presentation: 'card' }} />
+        <Stack.Screen name="host-dashboard" options={{ presentation: 'card' }} />
+        <Stack.Screen name="scorer/[id]" options={{ presentation: 'card' }} />
+        <Stack.Screen name="scorer/cricket/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="create-event" options={{ presentation: 'modal' }} />
         <Stack.Screen name="live" options={{ presentation: 'card' }} />
         <Stack.Screen name="find-team" options={{ presentation: 'card' }} />
