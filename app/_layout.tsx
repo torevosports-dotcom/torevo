@@ -13,7 +13,7 @@ const IS_DEMO = process.env.EXPO_PUBLIC_SUPABASE_URL === undefined ||
   process.env.EXPO_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co'
 
 const DEMO_USER = {
-  id: 'demo', name: 'Arjun Singh', username: 'arjun99',
+  id: 'demo', name: 'Arjun Singh', username: 'arjun99', email: '',
   phone: '+911234567890', city: 'Mumbai', bio: 'Cricket & football enthusiast 🏏',
   avatar_url: null, wallet_balance: 1500,
   sports_interests: ['cricket', 'football', 'badminton'] as any,

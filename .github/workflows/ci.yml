@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Tests & typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Gate: score-math engines must pass (cricket ball-by-ball, scoring, career stats).
+      - name: Engine tests
+        run: node test_engines.ts
+
+      # Informational: the project has a known platform-resolution false positive
+      # (lib/razorpay native/web split) so this does not gate the build.
+      - name: Typecheck
+        run: npx tsc --noEmit
+        continue-on-error: true
