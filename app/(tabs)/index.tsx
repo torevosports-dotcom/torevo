@@ -18,7 +18,6 @@ import { useRouter } from 'expo-router'
 import { useEffect } from 'react'
 import { useEventStore } from '../../stores/eventStore'
 import { useAuthStore } from '../../stores/authStore'
-import { useUiStore } from '../../stores/uiStore'
 import { categoryMeta, statusMeta, formatCurrency, THEME } from '../../lib/utils'
 import type { EventCategory } from '../../lib/types'
 
@@ -158,8 +157,6 @@ function PressCard({ onPress, style, children }: { onPress: () => void; style?: 
 export default function HomeScreen() {
   const router = useRouter()
   const user = useAuthStore((s) => s.user)
-  const mode = useUiStore((s) => s.mode)
-  const setMode = useUiStore((s) => s.setMode)
   const { events, fetchEvents, loading, setFilter, filters } = useEventStore()
 
   const scrollY = useSharedValue(0)
@@ -205,21 +202,6 @@ export default function HomeScreen() {
         <Image source={require('../../assets/logo_h.png')} style={{ width: 116, height: 34 }} resizeMode="contain" />
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          {/* Host / Participant toggle */}
-          <View style={{ flexDirection: 'row', backgroundColor: '#F0F0F0', borderRadius: 19, padding: 3 }}>
-            <Pressable
-              onPress={() => setMode('participant')}
-              style={{ paddingHorizontal: 12, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: mode === 'participant' ? '#000000' : 'transparent' }}
-            >
-              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 12, color: mode === 'participant' ? '#FFFFFF' : '#71717A' }}>Play</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => { setMode('host'); router.push('/host-dashboard' as any) }}
-              style={{ paddingHorizontal: 12, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: mode === 'host' ? '#000000' : 'transparent' }}
-            >
-              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 12, color: mode === 'host' ? '#FFFFFF' : '#71717A' }}>Host</Text>
-            </Pressable>
-          </View>
           <Pressable style={{
             width: 38, height: 38, borderRadius: 19,
             backgroundColor: '#F5F5F5', alignItems: 'center', justifyContent: 'center',

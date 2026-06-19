@@ -111,9 +111,11 @@ export default function HostDashboard() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, height: 56 }}>
-        <Pressable onPress={() => { setMode('participant'); router.canGoBack() ? router.back() : router.push('/') }} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#EFEFEF', alignItems: 'center', justifyContent: 'center' }}>
-          <ChevronLeft size={18} color={THEME.text} />
-        </Pressable>
+        {router.canGoBack() && (
+          <Pressable onPress={() => { setMode('participant'); router.back() }} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#EFEFEF', alignItems: 'center', justifyContent: 'center' }}>
+            <ChevronLeft size={18} color={THEME.text} />
+          </Pressable>
+        )}
         <Text style={{ fontFamily: 'Inter_900Black', fontSize: 18, color: THEME.text, flex: 1 }}>Host Dashboard</Text>
         <Pressable onPress={() => router.push('/create-event')} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, height: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: '#000' }}>
           <Plus size={15} color="#fff" strokeWidth={2.5} /><Text style={{ fontFamily: 'Inter_700Bold', fontSize: 12, color: '#fff' }}>New</Text>
