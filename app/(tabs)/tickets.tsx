@@ -1,4 +1,4 @@
-import { ScrollView, View, Text, TextInput, Pressable, Alert } from 'react-native'
+import { ScrollView, View, Text, TextInput, Pressable, Alert, Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Search, Ticket, X, Shield, ChevronRight } from 'lucide-react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
@@ -52,7 +52,10 @@ export default function TicketsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
       {/* Header */}
       <View style={{ backgroundColor: THEME.card, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: THEME.border }}>
-        <Text style={{ fontFamily: 'Inter_900Black', fontSize: 22, color: THEME.text, marginBottom: 14 }}>My Events</Text>
+        <Pressable onPress={() => router.push('/' as any)} style={{ marginBottom: 12 }}>
+          <Image source={require('../../assets/logo_h.png')} style={{ width: 104, height: 30 }} resizeMode="contain" />
+        </Pressable>
+        <Text style={{ fontFamily: 'Inter_900Black', fontSize: 22, color: THEME.text, marginBottom: 14 }}>My Tickets</Text>
 
         {/* Stats strip */}
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>

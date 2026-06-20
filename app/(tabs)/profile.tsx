@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'expo-router'
 import { useAuthStore } from '../../stores/authStore'
 import { useEventStore } from '../../stores/eventStore'
+import { useUiStore } from '../../stores/uiStore'
 import { formatCurrency, categoryMeta, THEME } from '../../lib/utils'
 import { computeCareer } from '../../lib/stats'
 
@@ -15,10 +16,14 @@ export default function ProfileScreen() {
   const tickets = useEventStore(s => s.tickets)
   const myScores = useEventStore(s => s.myScores)
   const fetchMyScores = useEventStore(s => s.fetchMyScores)
+  const hostedEvents = useEventStore(s => s.hostedEvents)
+  const fetchHostedEvents = useEventStore(s => s.fetchHostedEvents)
+  const mode = useUiStore(s => s.mode)
+  const isHost = mode === 'host'
   const router = useRouter()
 
   useEffect(() => {
-    if (user?.id) fetchMyScores(user.id)
+    if (user?.id) { fetchMyScores(user.id); fetchHostedEvents(user.id) }
   }, [user?.id])
 
   if (!user) return null
@@ -142,7 +147,29 @@ export default function ProfileScreen() {
           </View>
         </Animated.View>
 
-        {/* Host Dashboard entry */}
+        {/* HOST view: a hosting summary */}
+        {isHost && (
+          <Animated.View entering={FadeInDown.delay(100).springify()} style={{ marginHorizontal: 16, marginTop: 12 }}>
+            <View style={{ backgroundColor: THEME.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: THEME.border }}>
+              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: THEME.text, marginBottom: 12 }}>Hosting</Text>
+              <View style={{ flexDirection: 'row' }}>
+                {[
+                  { v: String(hostedEvents.length), l: 'Events' },
+                  { v: String(hostedEvents.reduce((s: number, e: any) => s + (e.current_participants || 0), 0)), l: 'Registrations' },
+                  { v: formatCurrency(hostedEvents.reduce((s: number, e: any) => s + (e.prize_pool || 0), 0)), l: 'Prize Pool' },
+                ].map((x, i) => (
+                  <View key={i} style={{ flex: 1, alignItems: 'center', borderRightWidth: i < 2 ? 1 : 0, borderRightColor: THEME.border }}>
+                    <Text style={{ fontFamily: 'Inter_900Black', fontSize: 16, color: THEME.text }}>{x.v}</Text>
+                    <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 10, color: THEME.textTertiary, marginTop: 2 }}>{x.l}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* PLAY view: shortcut into hosting */}
+        {!isHost && (
         <Animated.View entering={FadeInDown.delay(100).springify()} style={{ marginHorizontal: 16, marginTop: 12 }}>
           <Pressable
             onPress={() => router.push('/host-dashboard' as any)}
@@ -152,12 +179,13 @@ export default function ProfileScreen() {
               <Radio size={18} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: THEME.text }}>Host Dashboard</Text>
-              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: THEME.textTertiary }}>Manage your events & score matches live</Text>
+              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: THEME.text }}>Become a Host</Text>
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: THEME.textTertiary }}>Create events & score matches live</Text>
             </View>
             <ChevronRight size={18} color={THEME.textTertiary} />
           </Pressable>
         </Animated.View>
+        )}
 
         {/* Recent form */}
         {profile.recent_form.length > 0 && (
@@ -220,8 +248,8 @@ export default function ProfileScreen() {
         </Animated.View>
         )}
 
-        {/* Career Stats — ESPN / CricHeroes style, per sport */}
-        {career.length > 0 && (
+        {/* Career Stats — ESPN / CricHeroes style, per sport (player view only) */}
+        {!isHost && career.length > 0 && (
         <Animated.View entering={FadeInDown.delay(130).springify()} style={{ marginHorizontal: 16, marginTop: 16 }}>
           <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: THEME.text, marginBottom: 12 }}>Career Stats</Text>
           {career.map((c: any) => {
@@ -283,8 +311,8 @@ export default function ProfileScreen() {
         </Animated.View>
         )}
 
-        {/* Match History — personal scores */}
-        {myScores.length > 0 && (
+        {/* Match History — personal scores (player view only) */}
+        {!isHost && myScores.length > 0 && (
         <Animated.View entering={FadeInDown.delay(150).springify()} style={{ marginHorizontal: 16, marginTop: 16 }}>
           <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: THEME.text, marginBottom: 12 }}>Match History</Text>
           {myScores.map((s: any, i: number) => {

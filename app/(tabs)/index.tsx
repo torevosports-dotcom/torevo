@@ -1,6 +1,7 @@
 import { View, Text, Pressable, FlatList, Image, Dimensions, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Bell, Search, ChevronRight } from 'lucide-react-native'
+import { Bell, Search, ChevronRight, Plus, Play, Award } from 'lucide-react-native'
+import { toast } from '../../stores/toastStore'
 import Animated, { FadeIn, useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
@@ -64,31 +65,50 @@ function Shade() {
   )
 }
 
-// ── Poster card (trending rail) ──
+// ── Poster card (trending rail) — streaming-app style ──
 function Poster({ event, onPress, rank }: { event: any; onPress: () => void; rank?: number }) {
   const m = categoryMeta[event.category as EventCategory] ?? categoryMeta.other
   return (
-    <Pressable onPress={onPress} style={{ width: 150, marginRight: 12 }}>
-      <View style={{ width: 150, height: 210, borderRadius: 16, overflow: 'hidden', backgroundColor: '#111' }}>
+    <Pressable onPress={onPress} style={{ width: 166, marginRight: 12 }}>
+      <View style={{ width: 166, height: 250, borderRadius: 16, overflow: 'hidden', backgroundColor: '#111' }}>
         <Image source={m.image} style={{ position: 'absolute', width: '100%', height: '100%' }} resizeMode="cover" />
         <Shade />
-        {rank != null && (
-          <Text style={{ position: 'absolute', left: 6, top: -6, fontFamily: 'Inter_900Black', fontSize: 60, color: 'rgba(255,255,255,0.9)', textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 8 }}>{rank}</Text>
-        )}
+        {/* top-left badge */}
         {event.status === 'live' ? (
-          <View style={{ position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#000', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 11 }}>
-            <LiveDot /><Text style={{ fontFamily: 'Inter_700Bold', fontSize: 8, color: '#fff' }}>LIVE</Text>
+          <View style={{ position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#000', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 13 }}>
+            <LiveDot /><Text style={{ fontFamily: 'Inter_700Bold', fontSize: 9, color: '#fff' }}>LIVE</Text>
+          </View>
+        ) : rank != null ? (
+          <View style={{ position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(0,0,0,0.62)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
+            <Award size={11} color="#fff" /><Text style={{ fontFamily: 'Inter_700Bold', fontSize: 9, color: '#fff' }}>#{rank} Trending</Text>
+          </View>
+        ) : event.prize_pool > 0 ? (
+          <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.62)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 9, color: '#fff' }}>{`🏆 ${formatCurrency(event.prize_pool)}`}</Text>
           </View>
         ) : event.entry_fee === 0 ? (
-          <View style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(255,255,255,0.92)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 11 }}>
-            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 8, color: '#000' }}>FREE</Text>
+          <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: 'rgba(255,255,255,0.92)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 13 }}>
+            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 9, color: '#000' }}>FREE</Text>
           </View>
         ) : null}
-        <View style={{ position: 'absolute', left: 10, right: 10, bottom: 10 }}>
-          <Text numberOfLines={2} style={{ fontFamily: 'Inter_700Bold', fontSize: 12.5, color: '#fff', lineHeight: 16 }}>{event.title}</Text>
-          <Text numberOfLines={1} style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: 'rgba(255,255,255,0.7)', marginTop: 3 }}>
-            {m.label} · {event.location?.city ?? ''}
-          </Text>
+        {/* bottom: title + meta (left) and round actions (right) */}
+        <View style={{ position: 'absolute', left: 12, right: 10, bottom: 12, flexDirection: 'row', alignItems: 'flex-end' }}>
+          <View style={{ flex: 1, marginRight: 6 }}>
+            <Text numberOfLines={2} style={{ fontFamily: 'Inter_700Bold', fontSize: 13.5, color: '#fff', lineHeight: 17 }}>{event.title}</Text>
+            <Text numberOfLines={1} style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: 'rgba(255,255,255,0.72)', marginTop: 3 }}>
+              {event.date} · {m.label}
+            </Text>
+          </View>
+          <View style={{ alignItems: 'center', gap: 8 }}>
+            <Pressable onPress={() => toast('Added to your list', 'success')} hitSlop={6}
+              style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.22)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.45)', alignItems: 'center', justifyContent: 'center' }}>
+              <Plus size={15} color="#fff" strokeWidth={2.5} />
+            </Pressable>
+            <Pressable onPress={onPress} hitSlop={6}
+              style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+              <Play size={13} color="#000" fill="#000" />
+            </Pressable>
+          </View>
         </View>
       </View>
     </Pressable>

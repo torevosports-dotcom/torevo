@@ -63,20 +63,16 @@ function TabBar({ state, navigation }: any) {
   const current = state.routes[state.index]?.name
 
   const PLAY = [
-    { key: 'index', label: 'Home', icon: Home },
     { key: 'discover', label: 'Events', icon: Compass },
     { key: 'tickets', label: 'Tickets', icon: Ticket },
-    { key: 'profile', label: 'Profile', icon: User },
   ]
   const HOST = [
-    { key: 'manage', label: 'My Events', icon: Trophy },
     { key: '__create', label: 'Create', icon: Plus, action: () => router.push('/create-event') },
     { key: 'live', label: 'Live', icon: Radio },
-    { key: 'profile', label: 'Profile', icon: User },
   ]
   const items = mode === 'host' ? HOST : PLAY
-  const left = items.slice(0, 2)
-  const right = items.slice(2)
+  const left = [items[0]]
+  const right = [items[1]]
   const render = (it: any) => (
     <TabItem key={it.key} focused={current === it.key} icon={it.icon} label={it.label} accent={it.accent}
       onPress={() => (it.action ? it.action() : navigation.navigate(it.key))} />
