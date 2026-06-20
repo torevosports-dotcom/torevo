@@ -109,6 +109,55 @@ try {
   await sb.from('ticket_members').insert({ ticket_id: tid3, name: 'Captain', phone: '+919990001111' })
   ;({ data: tms } = await sb.from('ticket_members').select('*').eq('ticket_id', tid3))
   ok('roster editable (now 1 member)', tms?.length === 1, JSON.stringify(tms?.length))
+
+  const mkEvent = (extra) => sb.from('events').insert({
+    title: 'TEST', category: 'chess', format: 'individual', fee_mode: 'per_person',
+    date: '2026-12-09', time: '10:00', venue_name: 'T', venue_address: 'T', city: 'T', state: 'T',
+    max_participants: 10, current_participants: 0, entry_fee: 0, prize_pool: 0,
+    escrow_protected: false, skill_level: 'all', organizer_id: uid, organizer_name: 'Tester', ...extra,
+  }).select().single()
+  const reg = (eid, pm = 'free') => sb.rpc('register_for_event', { p_event_id: eid, p_participant_name: 'Tester', p_team_name: null, p_payment_method: pm, p_razorpay_payment_id: null, p_razorpay_order_id: null })
+
+  // 13. RE-REGISTER after cancel (ev was cancelled in step 7)
+  const rereg = await reg(ev.id, 'wallet')
+  ok('can re-register after cancelling', !!rereg.data && !rereg.error, rereg.error?.message)
+
+  // 14. INSUFFICIENT wallet balance blocked
+  const { data: evHi } = await mkEvent({ title: 'TEST Pricey', entry_fee: 9999999 }); created.push(evHi.id)
+  const insuff = await reg(evHi.id, 'wallet')
+  ok('insufficient balance blocked', !!insuff.error && /insufficient/i.test(insuff.error.message), insuff.error?.message)
+
+  // 15. REGISTRATION CLOSED blocked
+  const { data: evC } = await mkEvent({ title: 'TEST Closed' }); created.push(evC.id)
+  await sb.from('events').update({ registration_closes_at: '2020-01-01T00:00:00Z' }).eq('id', evC.id)
+  const closed = await reg(evC.id)
+  ok('registration-closed blocked', !!closed.error && /closed/i.test(closed.error.message), closed.error?.message)
+
+  // 16. COMPLETED event blocked
+  const { data: evD } = await mkEvent({ title: 'TEST Done', status: 'completed' }); created.push(evD.id)
+  const done = await reg(evD.id)
+  ok('completed event blocked', !!done.error && /no longer open/i.test(done.error.message), done.error?.message)
+
+  // 17. NON-ESCROW paid event → no escrow holding
+  const { data: evN } = await mkEvent({ title: 'TEST NoEscrow', entry_fee: 50, escrow_protected: false }); created.push(evN.id)
+  await reg(evN.id, 'wallet')
+  const { data: noEsc } = await sb.from('escrow_holdings').select('id').eq('event_id', evN.id)
+  ok('non-escrow event creates no escrow holding', (noEsc?.length ?? 0) === 0, JSON.stringify(noEsc))
+
+  // 18. NON-HOST cannot score (RLS via can_score) — a different signed-in user
+  const sb2 = createClient(env.EXPO_PUBLIC_SUPABASE_URL, env.EXPO_PUBLIC_SUPABASE_ANON_KEY, { auth: { persistSession: false } })
+  await sb2.auth.signInAnonymously()
+  const intrude = await sb2.from('score_events').insert({ match_id: lm.id, team_side: 'a', action: 'p1', points: 1, stat_key: 'points', stat_val: 1 })
+  ok('non-host CANNOT record a score (RLS blocks)', !!intrude.error, 'RLS did NOT block a non-host score!')
+
+  // 19. ESCROW auto-releases on completion (process_event_lifecycle)
+  const { data: evL } = await mkEvent({ title: 'TEST Lifecycle', entry_fee: 100, escrow_protected: true }); created.push(evL.id)
+  await reg(evL.id, 'wallet')
+  await sb.from('events').update({ status: 'live', starts_at: new Date(Date.now() - 4 * 3600 * 1000).toISOString() }).eq('id', evL.id)
+  await sb.rpc('process_event_lifecycle')
+  const { data: evLb } = await sb.from('events').select('status').eq('id', evL.id).single()
+  const { data: escL } = await sb.from('escrow_holdings').select('status').eq('event_id', evL.id)
+  ok('lifecycle completes match + releases escrow', evLb?.status === 'completed' && escL?.[0]?.status === 'released', JSON.stringify({ status: evLb?.status, esc: escL?.[0]?.status }))
 } catch (e) {
   ok('no unexpected exception', false, e.message)
 } finally {
