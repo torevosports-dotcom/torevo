@@ -1,4 +1,4 @@
-import { ScrollView, View, Text, Pressable, TextInput, FlatList, Alert } from 'react-native'
+import { ScrollView, View, Text, Pressable, TextInput, FlatList, Alert, Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ChevronLeft, Search, X, CheckCircle2, Star } from 'lucide-react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
@@ -135,7 +135,9 @@ export default function FindTeamScreen() {
                   backgroundColor: active ? '#09090B' : '#F4F4F5',
                 }}
               >
-                <Text style={{ fontSize: 14 }}>{item.emoji}</Text>
+                {item.key === 'pickleball'
+                  ? <Image source={require('../assets/sports/pickleball_icon.png')} style={{ width: 16, height: 16 }} resizeMode="contain" />
+                  : <Text style={{ fontSize: 14 }}>{item.emoji}</Text>}
                 {meta && (
                   <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: active ? 'white' : '#52525B' }}>
                     {meta.label}

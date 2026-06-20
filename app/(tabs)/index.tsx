@@ -283,7 +283,9 @@ export default function HomeScreen() {
                 } : {}),
               } as any}
             >
-              <Text style={{ fontSize: 13 }}>{item.emoji}</Text>
+              {item.key === 'pickleball'
+                ? <Image source={require('../../assets/sports/pickleball_icon.png')} style={{ width: 16, height: 16 }} resizeMode="contain" />
+                : <Text style={{ fontSize: 13 }}>{item.emoji}</Text>}
               <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 13, color: active ? '#FFFFFF' : '#4A4A4A' }}>
                 {item.label}
               </Text>

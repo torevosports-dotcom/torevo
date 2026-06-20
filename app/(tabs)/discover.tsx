@@ -132,7 +132,9 @@ export default function DiscoverScreen() {
                   clipPath: 'polygon(12px 0%, calc(100% - 12px) 0%, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0% 50%)',
                 } as any}
               >
-                <Text style={{ fontSize: 15 }}>{item.emoji}</Text>
+                {item.key === 'pickleball'
+                  ? <Image source={require('../../assets/sports/pickleball_icon.png')} style={{ width: 17, height: 17 }} resizeMode="contain" />
+                  : <Text style={{ fontSize: 15 }}>{item.emoji}</Text>}
                 <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 13, color: active ? '#FFFFFF' : THEME.textSecondary }}>
                   {item.label}
                 </Text>

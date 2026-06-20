@@ -80,7 +80,7 @@ export const categoryMeta: Record<EventCategory, { label: string; emoji: string;
   athletics:    { label: 'Athletics',    emoji: '🏃', color: '#0A0A0A', bg: '#F2F2F2', image: IMG('1552674605-db5fec9a2a54') },
   esports:      { label: 'Esports',      emoji: '🎮', color: '#0A0A0A', bg: '#F2F2F2', image: IMG('1542751371-adc38448a05e') },
   chess:        { label: 'Chess',        emoji: '♟️', color: '#0A0A0A', bg: '#F2F2F2', image: IMG('1529699211952-734e80c4d42b') },
-  pickleball:   { label: 'Pickleball',   emoji: '🏓', color: '#0A0A0A', bg: '#F2F2F2', image: IMG('1554284126-aa88f22d8b74') },
+  pickleball:   { label: 'Pickleball',   emoji: '🏓', color: '#0A0A0A', bg: '#F2F2F2', image: require('../assets/sports/pickleball_cover.png') },
   boxing:       { label: 'Boxing',       emoji: '🥊', color: '#0A0A0A', bg: '#F2F2F2', image: IMG('1547941126-3d5322b218b0') },
   corporate:    { label: 'Corporate',    emoji: '🏢', color: '#0A0A0A', bg: '#F2F2F2', image: IMG('1552581234-26160f608093') },
   other:        { label: 'Other',        emoji: '🎯', color: '#0A0A0A', bg: '#F2F2F2', image: IMG('1517649763962-0c623066013b') },
