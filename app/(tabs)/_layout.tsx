@@ -1,6 +1,6 @@
 import { Tabs, useRouter } from 'expo-router'
 import { View, Text, Pressable, Platform } from 'react-native'
-import { Home, Compass, Ticket, User, Plus, Trophy, Radio } from 'lucide-react-native'
+import { Home, Compass, Ticket, User, Plus, Trophy, Radio, Repeat } from 'lucide-react-native'
 import { useUiStore } from '../../stores/uiStore'
 
 const ACTIVE = '#000000'
@@ -28,20 +28,31 @@ function TabItem({ focused, icon: Icon, label, accent, onPress }: any) {
   )
 }
 
+// Circular flipper — one tap flips between the Play side and the Host side.
 function CenterToggle({ navigation }: any) {
   const mode = useUiStore((s) => s.mode)
   const setMode = useUiStore((s) => s.setMode)
+  const host = mode === 'host'
+  const flip = () => {
+    const next = host ? 'participant' : 'host'
+    setMode(next)
+    navigation.navigate(next === 'host' ? 'manage' : 'index')
+  }
   return (
-    <View style={{ width: 92, alignItems: 'center', justifyContent: 'center' }}>
-      <View style={{ flexDirection: 'row', backgroundColor: '#F0F0F0', borderRadius: 16, padding: 3 }}>
-        {([['participant', 'Play'], ['host', 'Host']] as const).map(([m, label]) => (
-          <Pressable key={m}
-            onPress={() => { setMode(m as any); navigation.navigate(m === 'host' ? 'manage' : 'index') }}
-            style={{ paddingHorizontal: 10, height: 28, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: mode === m ? '#000' : 'transparent' }}>
-            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 11, color: mode === m ? '#fff' : '#71717A' }}>{label}</Text>
-          </Pressable>
-        ))}
-      </View>
+    <View style={{ width: 84, alignItems: 'center', justifyContent: 'center' }}>
+      <Pressable onPress={flip} style={{
+        width: 54, height: 54, borderRadius: 27, marginTop: -14,
+        alignItems: 'center', justifyContent: 'center',
+        backgroundColor: host ? '#000000' : '#FFFFFF',
+        borderWidth: host ? 0 : 2, borderColor: '#000000',
+        ...(Platform.OS === 'web' ? ({ boxShadow: '0 3px 12px rgba(0,0,0,0.25)' } as any)
+          : { shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 6 }),
+      }}>
+        <Repeat size={15} color={host ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.4)'} style={{ position: 'absolute', top: 8 }} />
+        <Text style={{ fontFamily: 'Inter_900Black', fontSize: 11, color: host ? '#FFFFFF' : '#000000', marginTop: 6 }}>
+          {host ? 'HOST' : 'PLAY'}
+        </Text>
+      </Pressable>
     </View>
   )
 }

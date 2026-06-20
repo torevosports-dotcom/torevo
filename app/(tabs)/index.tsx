@@ -158,6 +158,9 @@ export default function HomeScreen() {
   const router = useRouter()
   const user = useAuthStore((s) => s.user)
   const { events, fetchEvents, loading, setFilter, filters } = useEventStore()
+  const liveMatches = useEventStore((s) => s.liveMatches)
+  const fetchLiveMatches = useEventStore((s) => s.fetchLiveMatches)
+  const subscribeToLiveMatches = useEventStore((s) => s.subscribeToLiveMatches)
 
   const scrollY = useSharedValue(0)
   const scrollHandler = useAnimatedScrollHandler({
@@ -170,7 +173,12 @@ export default function HomeScreen() {
     }],
   }))
 
-  useEffect(() => { fetchEvents() }, [])
+  useEffect(() => {
+    fetchEvents()
+    fetchLiveMatches()
+    const unsub = subscribeToLiveMatches()
+    return unsub
+  }, [])
 
   const activeCategory = filters.category ?? 'all'
   let allEvents = events.filter(e => e.status !== 'completed' && e.status !== 'cancelled')
@@ -178,7 +186,6 @@ export default function HomeScreen() {
     allEvents = allEvents.filter(e => e.category === activeCategory)
   }
 
-  const liveEvents = events.filter(e => e.status === 'live')
   const heroEvent = allEvents.find(e => e.status === 'live') ?? allEvents[0]
   const featuredEvents = allEvents.filter(e => e.prize_pool > 0 || e.entry_fee === 0).slice(0, 6)
   const endingEvents = allEvents.filter(e => {
@@ -372,34 +379,43 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* ── LIVE TICKER ───────────────────────────────────────────────────── */}
-        {liveEvents.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(60).springify()} style={{ marginTop: 14, marginHorizontal: 16 }}>
-            <View style={{
-              backgroundColor: '#000000', borderRadius: 14,
-              flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, overflow: 'hidden',
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 10 }}>
-                <LiveDot />
-                <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 10, color: '#FFFFFF', letterSpacing: 1.8 }}>LIVE</Text>
-              </View>
-              <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.18)', marginHorizontal: 10 }} />
-              <FlatList
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                data={liveEvents}
-                keyExtractor={i => i.id}
-                style={{ flex: 1 }}
-                contentContainerStyle={{ gap: 20, paddingVertical: 10, alignItems: 'center' }}
-                renderItem={({ item }) => (
-                  <Pressable onPress={() => router.push('/live' as any)}>
-                    <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.8)' }} numberOfLines={1}>
-                      {item.title}
-                    </Text>
-                  </Pressable>
-                )}
-              />
+        {/* ── LIVE NOW — ongoing matches with live scores ───────────────────── */}
+        {liveMatches.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(60).springify()} style={{ marginTop: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, marginBottom: 10 }}>
+              <LiveDot />
+              <Text style={{ fontFamily: 'Inter_900Black', fontSize: 16, color: '#000000' }}>LIVE NOW</Text>
+              <Pressable onPress={() => router.push('/live' as any)} style={{ marginLeft: 'auto' }}>
+                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: '#71717A' }}>See all ↗</Text>
+              </Pressable>
             </View>
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              data={liveMatches}
+              keyExtractor={(m) => m.id}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+              renderItem={({ item }) => (
+                <Pressable onPress={() => router.push('/live' as any)} style={{ width: 236, backgroundColor: '#000000', borderRadius: 16, padding: 14 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                    <Text style={{ fontSize: 15 }}>{item.emoji}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.14)' }}>
+                      <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#fff' }} />
+                      <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 9, color: '#fff' }}>LIVE</Text>
+                    </View>
+                    <Text numberOfLines={1} style={{ flex: 1, textAlign: 'right', fontFamily: 'Inter_400Regular', fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>{item.status}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text numberOfLines={1} style={{ flex: 1, fontFamily: 'Inter_600SemiBold', fontSize: 13, color: '#fff' }}>{item.team_a}</Text>
+                    <Text style={{ fontFamily: 'Inter_900Black', fontSize: 15, color: '#fff', marginLeft: 8 }}>{item.score_a}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5 }}>
+                    <Text numberOfLines={1} style={{ flex: 1, fontFamily: 'Inter_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>{item.team_b}</Text>
+                    <Text style={{ fontFamily: 'Inter_900Black', fontSize: 15, color: 'rgba(255,255,255,0.7)', marginLeft: 8 }}>{item.score_b}</Text>
+                  </View>
+                </Pressable>
+              )}
+            />
           </Animated.View>
         )}
 
