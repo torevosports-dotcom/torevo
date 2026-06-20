@@ -70,7 +70,7 @@ function TabBar({ state, navigation }: any) {
   ]
   const HOST = [
     { key: 'manage', label: 'My Events', icon: Trophy },
-    { key: '__create', label: 'Create', icon: Plus, accent: true, action: () => router.push('/create-event') },
+    { key: '__create', label: 'Create', icon: Plus, action: () => router.push('/create-event') },
     { key: 'live', label: 'Live', icon: Radio },
     { key: 'profile', label: 'Profile', icon: User },
   ]

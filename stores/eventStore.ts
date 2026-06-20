@@ -386,8 +386,9 @@ export const useEventStore = create<EventStore>((set, get) => ({
   },
 
   subscribeToLiveMatches: () => {
+    // Unique channel name per subscriber — two screens (Home + Live) can both subscribe.
     const channel = supabase
-      .channel('live_matches')
+      .channel('live_matches_' + Math.random().toString(36).slice(2))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'live_matches' }, () => {
         get().fetchLiveMatches()
       })
