@@ -15,7 +15,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useEventStore } from '../../stores/eventStore'
 import { useAuthStore } from '../../stores/authStore'
 import { categoryMeta, statusMeta, formatCurrency, THEME } from '../../lib/utils'
@@ -192,6 +192,10 @@ export default function HomeScreen() {
     return () => clearInterval(t)
   }, [liveMatches.length])
 
+  // Cinematic hero carousel (auto-rotate effect set up after heroItems below).
+  const heroRef = useRef<FlatList<any>>(null)
+  const [heroPage, setHeroPage] = useState(0)
+
   const activeCategory = filters.category ?? 'all'
   let allEvents = events.filter(e => e.status !== 'completed' && e.status !== 'cancelled')
   if (activeCategory !== 'all') {
@@ -199,6 +203,19 @@ export default function HomeScreen() {
   }
 
   const heroEvent = allEvents.find(e => e.status === 'live') ?? allEvents[0]
+  const heroItems = [...allEvents].sort((a, b) => (b.prize_pool - a.prize_pool) || (b.current_participants - a.current_participants)).slice(0, 6)
+
+  useEffect(() => {
+    if (heroItems.length < 2) return
+    const t = setInterval(() => {
+      setHeroPage((p) => {
+        const n = (p + 1) % heroItems.length
+        heroRef.current?.scrollToOffset({ offset: n * W, animated: true })
+        return n
+      })
+    }, 4500)
+    return () => clearInterval(t)
+  }, [heroItems.length])
   const featuredEvents = allEvents.filter(e => e.prize_pool > 0 || e.entry_fee === 0).slice(0, 6)
   const endingEvents = allEvents.filter(e => {
     const pct = e.current_participants / Math.max(e.max_participants, 1)
@@ -302,93 +319,62 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 90 }}
       >
 
-        {/* ── HERO ───────────────────────────────────────────────────────── */}
-        {heroEvent && (
-          <View style={{ marginHorizontal: 16, borderRadius: 22, overflow: 'hidden', height: HERO_H }}>
-            {/* Parallax image layer */}
-            <Animated.View style={[{
-              position: 'absolute', top: -60, left: 0, right: 0, bottom: -60,
-            }, heroParallax]}>
-              <Image
-                source={categoryMeta[heroEvent.category].image}
-                style={{ width: '100%', height: '100%' }}
-                resizeMode="cover"
-              />
-            </Animated.View>
-
-            {/* Top dark tint */}
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.18)' }} />
-            {/* Bottom gradient */}
-            <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '55%', backgroundColor: 'rgba(0,0,0,0.01)' }}>
-              <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '100%', backgroundColor: 'rgba(0,0,0,0.55)' }} />
-            </View>
-
-            {/* Live / Top badge */}
-            <View style={{ position: 'absolute', top: 14, left: 14 }}>
-              {heroEvent.status === 'live' ? (
-                <View style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 6,
-                  backgroundColor: '#000000', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
-                }}>
-                  <LiveDot />
-                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 11, color: '#FFFFFF', letterSpacing: 1 }}>LIVE NOW</Text>
-                </View>
-              ) : (
-                <View style={{
-                  backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
-                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
-                }}>
-                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 11, color: '#FFFFFF', letterSpacing: 1 }}>
-                    {heroEvent.prize_pool > 0 ? `🏆 TOP EVENT` : `TOP EVENT`}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* Glassmorphism bottom panel */}
-            <View style={{
-              position: 'absolute', bottom: 14, left: 14, right: 14,
-              borderRadius: 18, padding: 14, overflow: 'hidden',
-              ...(Platform.OS === 'web' ? {
-                backdropFilter: 'blur(20px) saturate(160%)',
-                backgroundColor: 'rgba(255,255,255,0.11)',
-                border: '1px solid rgba(255,255,255,0.18)',
-              } : {
-                backgroundColor: 'rgba(5,5,5,0.68)',
-              }),
-            } as any}>
-              <Text style={{
-                fontFamily: 'Inter_900Black', fontSize: 18, color: '#FFFFFF',
-                lineHeight: 23, marginBottom: 8,
-              }} numberOfLines={2}>
-                {heroEvent.title.toUpperCase()}
-              </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>
-                    {categoryMeta[heroEvent.category].label}
-                  </Text>
-                  <Text style={{ color: 'rgba(255,255,255,0.3)' }}>·</Text>
-                  <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.65)' }} numberOfLines={1}>
-                    {heroEvent.date}
-                  </Text>
-                  {heroEvent.entry_fee === 0 && (
-                    <>
-                      <Text style={{ color: 'rgba(255,255,255,0.3)' }}>·</Text>
-                      <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 12, color: '#FFFFFF' }}>FREE</Text>
-                    </>
-                  )}
-                </View>
-                <Pressable
-                  onPress={() => router.push(`/events/${heroEvent.id}` as any)}
-                  style={{
-                    backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 8,
-                    borderRadius: 24, marginLeft: 8,
-                  }}
-                >
-                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 12, color: '#000000' }}>Join →</Text>
-                </Pressable>
-              </View>
+        {/* ── CINEMATIC HERO CAROUSEL ── */}
+        {heroItems.length > 0 && (
+          <View style={{ marginTop: 4 }}>
+            <FlatList
+              ref={heroRef}
+              data={heroItems}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(e) => e.id}
+              onMomentumScrollEnd={(e) => setHeroPage(Math.round(e.nativeEvent.contentOffset.x / W))}
+              onScrollToIndexFailed={() => {}}
+              renderItem={({ item }) => {
+                const hm = categoryMeta[item.category as EventCategory]
+                return (
+                  <Pressable onPress={() => router.push(`/events/${item.id}` as any)} style={{ width: W, height: 470 }}>
+                    <Image source={hm.image} style={{ position: 'absolute', width: '100%', height: '100%' }} resizeMode="cover" />
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '42%', backgroundColor: 'rgba(0,0,0,0.30)' }} />
+                    <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '46%', backgroundColor: 'rgba(0,0,0,0.45)' }} />
+                    <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '24%', backgroundColor: 'rgba(0,0,0,0.80)' }} />
+                    <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 92, backgroundColor: '#000000' }} />
+                    <View style={{ position: 'absolute', top: 16, left: 20, flexDirection: 'row', gap: 8 }}>
+                      {item.status === 'live' ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#000', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 }}>
+                          <LiveDot /><Text style={{ fontFamily: 'Inter_700Bold', fontSize: 10, color: '#fff', letterSpacing: 1 }}>LIVE</Text>
+                        </View>
+                      ) : item.prize_pool > 0 ? (
+                        <View style={{ backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}>
+                          <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 10, color: '#fff', letterSpacing: 1 }}>{`🏆 ${formatCurrency(item.prize_pool)} PRIZE`}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <View style={{ position: 'absolute', bottom: 82, left: 20, right: 20 }}>
+                      <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.72)', letterSpacing: 1, marginBottom: 6 }}>
+                        {hm.label.toUpperCase()}  ·  {item.location.city}
+                      </Text>
+                      <Text numberOfLines={2} style={{ fontFamily: 'Inter_900Black', fontSize: 30, lineHeight: 34, color: '#fff', marginBottom: 14 }}>
+                        {item.title}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <Pressable onPress={() => router.push(`/events/${item.id}` as any)} style={{ backgroundColor: '#fff', paddingHorizontal: 22, paddingVertical: 12, borderRadius: 10 }}>
+                          <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: '#000' }}>{item.entry_fee === 0 ? 'Register Free' : 'Register'}</Text>
+                        </Pressable>
+                        <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)' }}>
+                          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 13, color: '#fff' }}>{item.date}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </Pressable>
+                )
+              }}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 12 }}>
+              {heroItems.map((_, i) => (
+                <View key={i} style={{ width: i === heroPage ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === heroPage ? '#000' : '#D8D8D8' }} />
+              ))}
             </View>
           </View>
         )}
