@@ -180,17 +180,8 @@ export default function HomeScreen() {
     return unsub
   }, [])
 
-  // Auto-scroll the LIVE NOW carousel.
+  // (Live carousel does NOT auto-scroll — only the top-events hero does.)
   const liveRef = useRef<FlatList<any>>(null)
-  const liveIdx = useRef(0)
-  useEffect(() => {
-    if (liveMatches.length < 2) return
-    const t = setInterval(() => {
-      liveIdx.current = (liveIdx.current + 1) % liveMatches.length
-      liveRef.current?.scrollToOffset({ offset: liveIdx.current * 248, animated: true })
-    }, 3000)
-    return () => clearInterval(t)
-  }, [liveMatches.length])
 
   // Cinematic hero carousel (auto-rotate effect set up after heroItems below).
   const heroRef = useRef<FlatList<any>>(null)
@@ -328,6 +319,10 @@ export default function HomeScreen() {
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
+              initialNumToRender={1}
+              maxToRenderPerBatch={2}
+              windowSize={3}
+              removeClippedSubviews
               keyExtractor={(e) => e.id}
               onMomentumScrollEnd={(e) => setHeroPage(Math.round(e.nativeEvent.contentOffset.x / W))}
               onScrollToIndexFailed={() => {}}
