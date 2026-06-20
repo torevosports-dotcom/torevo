@@ -1,4 +1,5 @@
 import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, Alert, Image } from 'react-native'
+import { toast } from '../../stores/toastStore'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useState } from 'react'
@@ -14,7 +15,7 @@ export default function LoginScreen() {
   const handleSendOTP = async () => {
     const digits = phone.replace(/\D/g, '')
     if (digits.length < 10) {
-      Alert.alert('Invalid Number', 'Please enter a valid 10-digit mobile number.')
+      toast('Enter a valid 10-digit mobile number.', 'error')
       return
     }
     setLoading(true)

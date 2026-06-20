@@ -1,4 +1,5 @@
 import { View, Text, TextInput, Pressable, ScrollView, Alert } from 'react-native'
+import { toast } from '../../stores/toastStore'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
@@ -27,16 +28,16 @@ export default function SetupScreen() {
 
   const handleCreate = async () => {
     if (!name.trim() || !username.trim() || !city) {
-      Alert.alert('Missing Info', 'Please fill in your name, username, and city.')
+      toast('Please fill in your name, username, and city.')
       return
     }
     if (sports.length === 0) {
-      Alert.alert('Pick Sports', 'Select at least one sport you play or follow.')
+      toast('Select at least one sport you play or follow.')
       return
     }
     const { error } = await createProfile({ name: name.trim(), username, city, sports })
     if (error) {
-      Alert.alert('Error', error)
+      toast(error, 'error')
       return
     }
     router.replace('/(tabs)/' as any)

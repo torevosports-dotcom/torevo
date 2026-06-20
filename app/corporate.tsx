@@ -1,4 +1,5 @@
 import { ScrollView, View, Text, Pressable, TextInput, Alert } from 'react-native'
+import { toast } from '../stores/toastStore'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ChevronLeft, CheckCircle2, Users, Clock, Building2, Shield } from 'lucide-react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
@@ -117,7 +118,7 @@ export default function CorporateScreen() {
                 employee_count: employees || null,
               })
               setSubmitting(false)
-              if (error) { Alert.alert('Error', 'Could not submit. Please try again.'); return }
+              if (error) { toast('Could not submit. Please try again.', 'error'); return }
               setSubmitted(true)
             }}
             disabled={!company || !contact || submitting}

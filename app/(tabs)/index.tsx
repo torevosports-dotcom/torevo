@@ -15,7 +15,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useEventStore } from '../../stores/eventStore'
 import { useAuthStore } from '../../stores/authStore'
 import { categoryMeta, statusMeta, formatCurrency, THEME } from '../../lib/utils'
@@ -179,6 +179,18 @@ export default function HomeScreen() {
     const unsub = subscribeToLiveMatches()
     return unsub
   }, [])
+
+  // Auto-scroll the LIVE NOW carousel.
+  const liveRef = useRef<FlatList<any>>(null)
+  const liveIdx = useRef(0)
+  useEffect(() => {
+    if (liveMatches.length < 2) return
+    const t = setInterval(() => {
+      liveIdx.current = (liveIdx.current + 1) % liveMatches.length
+      liveRef.current?.scrollToOffset({ offset: liveIdx.current * 248, animated: true })
+    }, 3000)
+    return () => clearInterval(t)
+  }, [liveMatches.length])
 
   const activeCategory = filters.category ?? 'all'
   let allEvents = events.filter(e => e.status !== 'completed' && e.status !== 'cancelled')
@@ -390,10 +402,12 @@ export default function HomeScreen() {
               </Pressable>
             </View>
             <FlatList
+              ref={liveRef}
               horizontal
               showsHorizontalScrollIndicator={false}
               data={liveMatches}
               keyExtractor={(m) => m.id}
+              onScrollToIndexFailed={() => {}}
               contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
               renderItem={({ item }) => (
                 <Pressable onPress={() => router.push('/live' as any)} style={{ width: 236, backgroundColor: '#000000', borderRadius: 16, padding: 14 }}>

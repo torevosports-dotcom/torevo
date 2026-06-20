@@ -1,4 +1,5 @@
 import { ScrollView, View, Text, Pressable, TextInput, ActivityIndicator, Alert } from 'react-native'
+import { toast } from '../../stores/toastStore'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ChevronLeft } from 'lucide-react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
@@ -42,8 +43,8 @@ export default function TeamRoster() {
   async function save() {
     if (!ticketId) return
     setSaving(true)
-    try { await saveTeamMembers(ticketId, members); Alert.alert('Saved', 'Team roster updated.') }
-    catch (e: any) { Alert.alert('Could not save', e?.message ?? 'Try again.') }
+    try { await saveTeamMembers(ticketId, members); toast('Team roster updated.', 'success') }
+    catch (e: any) { toast(e?.message ?? 'Could not save. Try again.', 'error') }
     finally { setSaving(false) }
   }
 

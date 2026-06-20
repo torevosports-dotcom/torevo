@@ -5,6 +5,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useEventStore } from '../../stores/eventStore'
+import { toast } from '../../stores/toastStore'
 import { THEME } from '../../lib/utils'
 import { sportConfig, type ScoreAction } from '../../lib/scoring-config'
 import { teamScores, playerAgg } from '../../lib/scoring'
@@ -57,7 +58,7 @@ export default function Scorer() {
   }
 
   async function record(action: ScoreAction, side: 'a' | 'b', player?: any) {
-    if (action.scope === 'player' && !player) { Alert.alert('Select a player', 'Tap a player first, then the action.'); return }
+    if (action.scope === 'player' && !player) { toast('Tap a player first, then the action.'); return }
     const statVal = action.statVal ?? (action.points > 0 ? action.points : 1)
     const row = {
       match_id: match.id,
@@ -95,7 +96,7 @@ export default function Scorer() {
 
   async function saveTeams() {
     await saveMatch(match.id, { team_a: teamA, team_b: teamB, status })
-    Alert.alert('Saved', 'Match details updated.')
+    toast('Match details updated.', 'success')
   }
   async function onAddPlayer() {
     if (!pName.trim()) return
@@ -107,7 +108,7 @@ export default function Scorer() {
     if (!comment.trim()) return
     const n = new Date()
     await postCommentary(match.id, `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`, comment.trim())
-    setComment(''); Alert.alert('Posted', 'Commentary sent live.')
+    setComment(''); toast('Commentary sent live.', 'success')
   }
 
   const input = { backgroundColor: '#F4F4F4', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontFamily: 'Inter_500Medium', fontSize: 13, color: THEME.text } as any

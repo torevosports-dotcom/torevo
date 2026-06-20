@@ -1,4 +1,5 @@
 import { ScrollView, View, Text, Pressable, TextInput, ActivityIndicator, Alert } from 'react-native'
+import { toast } from '../../../stores/toastStore'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ChevronLeft, RotateCcw } from 'lucide-react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
@@ -74,7 +75,7 @@ export default function CricketScorer() {
   }
 
   async function startMatch() {
-    if (!sStriker.trim() || !sNon.trim() || !sBowler.trim()) { Alert.alert('Add opening players', 'Enter striker, non-striker and bowler.'); return }
+    if (!sStriker.trim() || !sNon.trim() || !sBowler.trim()) { toast('Enter striker, non-striker and bowler.'); return }
     const live = await getOrCreateMatch({ id: event.id, category: 'cricket', title: event.title, prize_pool: event.prize_pool })
     const fields = {
       overs_limit: parseInt(overs) || 20, team_a: tA || 'Team A', team_b: tB || 'Team B',
@@ -150,7 +151,7 @@ export default function CricketScorer() {
     setNewBowler(''); setNeedBowler(false)
   }
   async function startSecondInnings() {
-    if (!sStriker.trim() || !sNon.trim() || !sBowler.trim()) { Alert.alert('Add opening players', 'Enter new openers and bowler.'); return }
+    if (!sStriker.trim() || !sNon.trim() || !sBowler.trim()) { toast('Enter new openers and bowler.'); return }
     await patchCm({ innings: 2, status: 'live', striker: sStriker.trim(), non_striker: sNon.trim(), bowler: sBowler.trim() })
     setSStriker(''); setSNon(''); setSBowler('')
   }

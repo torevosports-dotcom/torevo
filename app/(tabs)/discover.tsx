@@ -34,8 +34,26 @@ export default function DiscoverScreen() {
   const router = useRouter()
   const { filters, setFilter, filteredEvents } = useEventStore()
   const [showFilters, setShowFilters] = useState(false)
+  const [sort, setSort] = useState<'relevance' | 'price_low' | 'price_high' | 'date'>('relevance')
+  const [dateScope, setDateScope] = useState<'all' | 'week' | 'month'>('all')
 
-  const results = filteredEvents()
+  const base = filteredEvents()
+  const now = Date.now()
+  const results = base
+    .filter((e) => {
+      if (dateScope === 'all') return true
+      const t = new Date(e.date).getTime()
+      if (isNaN(t)) return true
+      const days = (t - now) / 86400000
+      return dateScope === 'week' ? days <= 7 : days <= 31
+    })
+    .slice()
+    .sort((a, b) => {
+      if (sort === 'price_low') return a.entry_fee - b.entry_fee
+      if (sort === 'price_high') return b.entry_fee - a.entry_fee
+      if (sort === 'date') return new Date(a.date).getTime() - new Date(b.date).getTime()
+      return 0
+    })
   const activeFilterCount = [
     filters.category !== 'all',
     filters.event_type !== 'all',
@@ -163,27 +181,55 @@ export default function DiscoverScreen() {
                 <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: value ? '#FFFFFF' : THEME.textSecondary }}>{label}</Text>
               </Pressable>
             ))}
-            {activeFilterCount > 0 && (
+            {(activeFilterCount > 0 || dateScope !== 'all' || sort !== 'relevance') && (
               <Pressable
-                onPress={() => { useEventStore.getState().resetFilters(); setShowFilters(false) }}
+                onPress={() => { useEventStore.getState().resetFilters(); setSort('relevance'); setDateScope('all'); setShowFilters(false) }}
                 style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F5F5F5', borderWidth: 1, borderColor: '#E8E8E8' }}
               >
                 <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: THEME.text }}>Clear All</Text>
               </Pressable>
             )}
           </View>
+
+          {/* Area */}
+          <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: THEME.text, marginTop: 16, marginBottom: 8 }}>Area</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.bg, borderRadius: 12, borderWidth: 1.5, borderColor: filters.city ? '#000000' : THEME.border, paddingHorizontal: 12, height: 44 }}>
+            <Search size={15} color={filters.city ? '#000' : THEME.textTertiary} />
+            <TextInput value={filters.city} onChangeText={(v) => setFilter('city', v)} placeholder="City or area (e.g. Bangalore, Indiranagar)" placeholderTextColor={THEME.textTertiary}
+              style={{ flex: 1, marginLeft: 8, fontFamily: 'Inter_400Regular', fontSize: 13, color: THEME.text }} />
+            {!!filters.city && <Pressable onPress={() => setFilter('city', '')}><X size={14} color={THEME.textTertiary} /></Pressable>}
+          </View>
+
+          {/* When */}
+          <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: THEME.text, marginTop: 16, marginBottom: 8 }}>When</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {([['all', 'Any time'], ['week', 'This week'], ['month', 'This month']] as const).map(([k, l]) => (
+              <Pressable key={k} onPress={() => setDateScope(k)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: dateScope === k ? '#000000' : '#F5F5F5', borderWidth: 1, borderColor: dateScope === k ? '#000000' : '#E8E8E8' }}>
+                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: dateScope === k ? '#FFFFFF' : THEME.textSecondary }}>{l}</Text>
+              </Pressable>
+            ))}
+          </View>
         </Animated.View>
       )}
 
       {/* Event list */}
       <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ paddingTop: 14 }}>
+        {/* Sort row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, marginBottom: 14 }}>
+          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: THEME.textTertiary }}>Sort</Text>
+          {([['relevance', 'Top'], ['price_low', '₹ Low'], ['price_high', '₹ High'], ['date', 'Soonest']] as const).map(([k, l]) => (
+            <Pressable key={k} onPress={() => setSort(k)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: sort === k ? '#000000' : '#EFEFEF' }}>
+              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: sort === k ? '#FFFFFF' : THEME.textSecondary }}>{l}</Text>
+            </Pressable>
+          ))}
+        </View>
         {results.length === 0 ? (
           <View style={{ alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 }}>
             <Text style={{ fontSize: 48, marginBottom: 12 }}>🔍</Text>
             <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: THEME.text, textAlign: 'center' }}>No events found</Text>
             <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: THEME.textTertiary, textAlign: 'center', marginTop: 6 }}>Try adjusting your filters</Text>
             <Pressable
-              onPress={() => useEventStore.getState().resetFilters()}
+              onPress={() => { useEventStore.getState().resetFilters(); setSort('relevance'); setDateScope('all') }}
               style={{ marginTop: 16, backgroundColor: '#000000', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20 }}
             >
               <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: '#FFFFFF' }}>Reset Filters</Text>

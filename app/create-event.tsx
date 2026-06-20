@@ -1,4 +1,5 @@
 import { ScrollView, View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, Image, Alert, ActivityIndicator } from 'react-native'
+import { toast } from '../stores/toastStore'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { X, ChevronRight, CheckCircle2 } from 'lucide-react-native'
 import Animated, { FadeInRight, FadeInDown, FadeOutLeft } from 'react-native-reanimated'
@@ -68,7 +69,7 @@ export default function CreateEventScreen() {
   const next = async () => {
     if (step < 3) { setStep((step + 1) as Step); return }
     // Step 3 → Publish to Supabase
-    if (!user) { Alert.alert('Error', 'You must be logged in to create an event.'); return }
+    if (!user) { toast('You must be logged in to create an event.', 'error'); return }
     setPublishing(true)
 
     // Build registration deadline from the event date+time (registration closes at start)
@@ -126,7 +127,7 @@ export default function CreateEventScreen() {
       .select()
       .single()
 
-    if (error) { setPublishing(false); Alert.alert('Failed to publish', error.message); return }
+    if (error) { setPublishing(false); toast('Failed to publish: ' + error.message, 'error'); return }
 
     // If a prize pool was set, record a first-place prize row
     if (prize > 0 && created?.id) {

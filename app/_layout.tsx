@@ -7,6 +7,7 @@ import { useEffect } from 'react'
 import { View, StyleSheet, Platform, ActivityIndicator } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { useAuthStore } from '../stores/authStore'
+import { Toast } from '../components/Toast'
 
 const IS_DEMO = process.env.EXPO_PUBLIC_SUPABASE_URL === undefined ||
   process.env.EXPO_PUBLIC_SUPABASE_URL === '' ||
@@ -101,6 +102,7 @@ export default function RootLayout() {
         <Stack.Screen name="prizes" options={{ presentation: 'card' }} />
         <Stack.Screen name="search" options={{ presentation: 'card' }} />
       </Stack>
+      <Toast />
     </SafeAreaProvider>
   )
 }

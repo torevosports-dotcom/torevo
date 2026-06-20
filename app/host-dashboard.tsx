@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { useAuthStore } from '../stores/authStore'
 import { useEventStore } from '../stores/eventStore'
 import { useUiStore } from '../stores/uiStore'
+import { toast } from '../stores/toastStore'
 import { formatCurrency, categoryMeta, statusMeta, THEME } from '../lib/utils'
 
 export default function HostDashboard() {
@@ -34,9 +35,9 @@ export default function HostDashboard() {
     const res = await assignUmpire(eventId, phone)
     setOpenAssign(null); setPhone('')
     await refresh()
-    Alert.alert('Umpire assigned', res.linked
-      ? 'Linked to their account — they can score now.'
-      : 'Saved. They get scoring access the moment they sign up with this number.')
+    toast(res.linked
+      ? 'Umpire linked — they can score now.'
+      : 'Umpire saved — access granted when they sign up.', 'success')
   }
 
   const scoreBtn = (e: any) => (

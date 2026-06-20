@@ -1,4 +1,5 @@
 import { ScrollView, View, Text, Pressable, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image } from 'react-native'
+import { toast } from '../../stores/toastStore'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ArrowLeft, MapPin, Users, Trophy, Shield, Clock, ChevronRight, CheckCircle2 } from 'lucide-react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
@@ -76,11 +77,11 @@ export default function EventDetailScreen() {
   async function handleConfirmPayment() {
     if (!user) return
     if (paymentMethod === 'wallet' && !canPayWallet) {
-      Alert.alert('Insufficient Balance', 'Please add funds to your wallet or choose another payment method.')
+      toast('Insufficient balance — add funds or choose another method.', 'error')
       return
     }
     if (paymentMethod === 'upi' && !upiId.includes('@')) {
-      Alert.alert('Invalid UPI', 'Please enter a valid UPI ID (e.g. name@upi)')
+      toast('Enter a valid UPI ID (e.g. name@upi).', 'error')
       return
     }
 
@@ -95,7 +96,7 @@ export default function EventDetailScreen() {
           body: { amount: event.entry_fee, eventId: event.id, userId: user.id },
         })
         if (orderError || !orderData?.id) {
-          Alert.alert('Payment Error', 'Could not create payment order. Try wallet payment.')
+          toast('Could not create payment order. Try wallet.', 'error')
           setPaying(false)
           return
         }
@@ -131,7 +132,7 @@ export default function EventDetailScreen() {
       })
 
       if (error || !ticket) {
-        Alert.alert('Registration Failed', error ?? 'Please try again.')
+        toast(error ?? 'Registration failed. Please try again.', 'error')
         setPaying(false)
         return
       }
@@ -149,7 +150,7 @@ export default function EventDetailScreen() {
       setStep('success')
     } catch (err: any) {
       if (err?.code !== 2) {
-        Alert.alert('Payment Failed', err?.description ?? 'Payment was not completed.')
+        toast(err?.description ?? 'Payment was not completed.', 'error')
       }
     } finally {
       setPaying(false)
@@ -586,7 +587,7 @@ export default function EventDetailScreen() {
                         amountPaid: 0, paymentMethod: 'free',
                       })
                       setPaying(false)
-                      if (error || !ticket) { Alert.alert('Error', error ?? 'Registration failed'); return }
+                      if (error || !ticket) { toast(error ?? 'Registration failed', 'error'); return }
                       registerForEvent(event.id, ticket)
                       setStep('success')
                     }
