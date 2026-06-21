@@ -1,6 +1,6 @@
 import { View, Text, Pressable, FlatList, Image, Dimensions, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Bell, Search, ChevronRight, Plus, Play, Award } from 'lucide-react-native'
+import { Bell, Search, ChevronRight, Plus, Play } from 'lucide-react-native'
 import { toast } from '../../stores/toastStore'
 import Animated, { FadeIn, useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
@@ -11,7 +11,11 @@ import { categoryMeta, formatCurrency, THEME } from '../../lib/utils'
 import type { EventCategory } from '../../lib/types'
 
 const { width: W } = Dimensions.get('window')
-const HERO_H = Math.min(Math.round(W * 1.18), 540)
+const HGAP = 14
+const CARD_W = W - 56          // leaves the next card peeking
+const SNAP = CARD_W + HGAP
+const CARD_H = Math.min(Math.round(CARD_W * 1.36), 470)
+const SIDE = Math.round((W - CARD_W) / 2)
 const PADDLE = require('../../assets/sports/pickleball_icon.png')
 
 const CHIPS: { key: EventCategory | 'all'; label: string; emoji: string }[] = [
@@ -79,9 +83,7 @@ function Poster({ event, onPress, rank }: { event: any; onPress: () => void; ran
             <LiveDot /><Text style={{ fontFamily: 'Inter_700Bold', fontSize: 9, color: '#fff' }}>LIVE</Text>
           </View>
         ) : rank != null ? (
-          <View style={{ position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(0,0,0,0.62)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
-            <Award size={11} color="#fff" /><Text style={{ fontFamily: 'Inter_700Bold', fontSize: 9, color: '#fff' }}>#{rank} Trending</Text>
-          </View>
+          <Text style={{ position: 'absolute', top: -6, left: 6, fontFamily: 'Inter_900Black', fontSize: 64, lineHeight: 70, color: '#fff', textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 }}>{rank}</Text>
         ) : event.prize_pool > 0 ? (
           <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.62)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
             <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 9, color: '#fff' }}>{`🏆 ${formatCurrency(event.prize_pool)}`}</Text>
@@ -167,7 +169,7 @@ export default function HomeScreen() {
     const t = setInterval(() => {
       setHeroPage((p) => {
         const n = (p + 1) % heroItems.length
-        heroRef.current?.scrollToOffset({ offset: n * W, animated: true })
+        heroRef.current?.scrollToOffset({ offset: n * SNAP, animated: true })
         return n
       })
     }, 4000)
@@ -221,23 +223,24 @@ export default function HomeScreen() {
               ref={heroRef}
               data={heroItems}
               horizontal
-              pagingEnabled
               showsHorizontalScrollIndicator={false}
-              initialNumToRender={1}
-              maxToRenderPerBatch={2}
-              windowSize={3}
-              removeClippedSubviews
+              snapToInterval={SNAP}
+              snapToAlignment="start"
+              decelerationRate="fast"
+              contentContainerStyle={{ paddingHorizontal: SIDE }}
+              initialNumToRender={2}
+              maxToRenderPerBatch={3}
+              windowSize={5}
               keyExtractor={(e) => e.id}
-              onMomentumScrollEnd={(e) => setHeroPage(Math.round(e.nativeEvent.contentOffset.x / W))}
+              onMomentumScrollEnd={(e) => setHeroPage(Math.round(e.nativeEvent.contentOffset.x / SNAP))}
               onScrollToIndexFailed={() => {}}
               renderItem={({ item }) => {
                 const m = categoryMeta[item.category as EventCategory] ?? categoryMeta.other
                 return (
-                  <Pressable onPress={() => goEvent(item.id)} style={{ width: W, height: HERO_H }}>
+                  <Pressable onPress={() => goEvent(item.id)} style={{ width: CARD_W, height: CARD_H, marginRight: HGAP, borderRadius: 22, overflow: 'hidden', backgroundColor: '#111' }}>
                     <Image source={m.image} style={{ position: 'absolute', width: '100%', height: '100%' }} resizeMode="cover" />
                     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '34%', backgroundColor: 'rgba(0,0,0,0.25)' }} />
                     <Shade />
-                    <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 60, backgroundColor: THEME.bg }} />
                     <View style={{ position: 'absolute', top: 14, left: 20 }}>
                       {item.status === 'live' ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#000', paddingHorizontal: 11, paddingVertical: 6, borderRadius: 20 }}>
@@ -249,7 +252,7 @@ export default function HomeScreen() {
                         </View>
                       ) : null}
                     </View>
-                    <View style={{ position: 'absolute', bottom: 70, left: 20, right: 20 }}>
+                    <View style={{ position: 'absolute', bottom: 22, left: 18, right: 18 }}>
                       <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11.5, color: 'rgba(255,255,255,0.75)', letterSpacing: 1.5, marginBottom: 8 }}>
                         {m.label.toUpperCase()}  •  {item.location?.city}
                       </Text>
@@ -269,11 +272,6 @@ export default function HomeScreen() {
                 )
               }}
             />
-            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: -2 }}>
-              {heroItems.map((_, i) => (
-                <View key={i} style={{ width: i === heroPage ? 20 : 6, height: 6, borderRadius: 3, backgroundColor: i === heroPage ? '#000' : '#CFCFCF' }} />
-              ))}
-            </View>
           </Animated.View>
         )}
 
