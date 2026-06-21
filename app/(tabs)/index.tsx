@@ -4,7 +4,7 @@ import { Bell, Search, ChevronRight, Plus, Play } from 'lucide-react-native'
 import { toast } from '../../stores/toastStore'
 import Animated, { FadeIn, useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useEventStore } from '../../stores/eventStore'
 import { useAuthStore } from '../../stores/authStore'
 import { categoryMeta, formatCurrency, THEME } from '../../lib/utils'
@@ -140,7 +140,11 @@ function Rail({ title, data, render, onSeeAll }: { title: string; data: any[]; r
 export default function HomeScreen() {
   const router = useRouter()
   const user = useAuthStore((s) => s.user)
-  const { events, fetchEvents, setFilter, filters } = useEventStore()
+  // Granular selectors — Home no longer re-renders on unrelated store changes.
+  const events = useEventStore((s) => s.events)
+  const fetchEvents = useEventStore((s) => s.fetchEvents)
+  const setFilter = useEventStore((s) => s.setFilter)
+  const filters = useEventStore((s) => s.filters)
   const liveMatches = useEventStore((s) => s.liveMatches)
   const fetchLiveMatches = useEventStore((s) => s.fetchLiveMatches)
   const subscribeToLiveMatches = useEventStore((s) => s.subscribeToLiveMatches)
@@ -153,14 +157,19 @@ export default function HomeScreen() {
   }, [])
 
   const activeCategory = filters.category ?? 'all'
-  let pool = events.filter((e) => e.status !== 'completed' && e.status !== 'cancelled')
-  if (activeCategory !== 'all') pool = pool.filter((e) => e.category === activeCategory)
-
-  const heroItems = [...pool].sort((a, b) => (b.prize_pool - a.prize_pool) || (b.current_participants - a.current_participants)).slice(0, 6)
-  const trending = [...pool].sort((a, b) => b.current_participants - a.current_participants).slice(0, 10)
-  const freeEvents = pool.filter((e) => e.entry_fee === 0).slice(0, 10)
-  const prizeEvents = [...pool].filter((e) => e.prize_pool > 0).sort((a, b) => b.prize_pool - a.prize_pool).slice(0, 10)
-  const soon = [...pool].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 10)
+  // Derive every rail once per (events, category) change — not on every render
+  // (the 4s hero auto-rotate used to recompute all five sorts each tick).
+  const { heroItems, trending, freeEvents, prizeEvents, soon } = useMemo(() => {
+    let pool = events.filter((e) => e.status !== 'completed' && e.status !== 'cancelled')
+    if (activeCategory !== 'all') pool = pool.filter((e) => e.category === activeCategory)
+    return {
+      heroItems: [...pool].sort((a, b) => (b.prize_pool - a.prize_pool) || (b.current_participants - a.current_participants)).slice(0, 6),
+      trending: [...pool].sort((a, b) => b.current_participants - a.current_participants).slice(0, 10),
+      freeEvents: pool.filter((e) => e.entry_fee === 0).slice(0, 10),
+      prizeEvents: [...pool].filter((e) => e.prize_pool > 0).sort((a, b) => b.prize_pool - a.prize_pool).slice(0, 10),
+      soon: [...pool].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 10),
+    }
+  }, [events, activeCategory])
 
   const heroRef = useRef<FlatList<any>>(null)
   const [heroPage, setHeroPage] = useState(0)
@@ -331,7 +340,7 @@ export default function HomeScreen() {
         <Rail title="Happening Soon" data={soon} onSeeAll={() => router.push('/discover' as any)}
           render={(item) => <Poster key={item.id} event={item} onPress={() => goEvent(item.id)} />} />
 
-        {pool.length === 0 && (
+        {heroItems.length === 0 && trending.length === 0 && (
           <View style={{ alignItems: 'center', paddingTop: 80 }}>
             <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: THEME.text }}>No events yet</Text>
             <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: THEME.textTertiary, marginTop: 4 }}>Pull to refresh or check back soon.</Text>

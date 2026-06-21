@@ -10,6 +10,7 @@ import { categoryMeta, formatCurrency, THEME } from '../../lib/utils'
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; icon: string }> = {
   upcoming:  { label: 'Upcoming',  bg: THEME.orangeLight, text: THEME.orangeDark,  icon: '⏳' },
+  live:      { label: 'Live',      bg: '#000',            text: '#fff',             icon: '●'  },
   completed: { label: 'Completed', bg: THEME.greenBg,     text: THEME.green,        icon: '✅' },
   cancelled: { label: 'Cancelled', bg: THEME.redBg,       text: THEME.red,          icon: '✕'  },
 }
@@ -140,12 +141,17 @@ export default function TicketsScreen() {
         ) : (
           filtered.map((ticket, i) => {
             const meta = categoryMeta[ticket.event.category]
-            const cfg = STATUS_CONFIG[ticket.status] ?? STATUS_CONFIG.upcoming
+            // Live state comes from the EVENT (single source of truth), not the ticket.
+            const isLive = ticket.event.status === 'live' && ticket.status !== 'cancelled'
+            const isDone = ticket.status !== 'cancelled' && (ticket.event.status === 'completed' || ticket.status === 'completed')
+            const cfg = isLive ? STATUS_CONFIG.live : (STATUS_CONFIG[ticket.status] ?? STATUS_CONFIG.upcoming)
+            // Live/finished events deep-link to the scoreboard; upcoming → event details.
+            const target = (isLive || isDone) ? `/match/${ticket.event.id}` : `/events/${ticket.event.id}`
 
             return (
               <Animated.View key={ticket.id} entering={FadeInDown.delay(Math.min(i, 8) * 60).springify()}>
                 <Pressable
-                  onPress={() => router.push(`/events/${ticket.event.id}` as any)}
+                  onPress={() => router.push(target as any)}
                   style={{
                     marginHorizontal: 16, marginBottom: 14,
                     borderRadius: 16, overflow: 'hidden',
@@ -192,6 +198,24 @@ export default function TicketsScreen() {
                           🏅 Team: {ticket.team_name}
                         </Text>
                       </View>
+                    )}
+
+                    {/* Live / result CTA */}
+                    {(isLive || isDone) && (
+                      <Pressable
+                        onPress={(e) => { e.stopPropagation?.(); router.push(`/match/${ticket.event.id}` as any) }}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+                          paddingVertical: 11, borderRadius: 12, marginBottom: 12,
+                          backgroundColor: isLive ? '#000' : THEME.card,
+                          borderWidth: isLive ? 0 : 1.5, borderColor: THEME.border,
+                        }}
+                      >
+                        {isLive && <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#fff' }} />}
+                        <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: isLive ? '#fff' : THEME.text }}>
+                          {isLive ? 'Watch Live' : 'View Result'}
+                        </Text>
+                      </Pressable>
                     )}
 
                     {/* Footer */}

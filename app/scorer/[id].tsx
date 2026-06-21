@@ -13,7 +13,7 @@ import { teamScores, playerAgg } from '../../lib/scoring'
 export default function Scorer() {
   const router = useRouter()
   const { id } = useLocalSearchParams<{ id: string }>()
-  const { getOrCreateMatch, saveMatch, listMatchPlayers, addMatchPlayer, postCommentary, fetchEventRoster } = useEventStore()
+  const { getOrCreateMatch, saveMatch, listMatchPlayers, addMatchPlayer, postCommentary, fetchEventRoster, endMatch } = useEventStore()
 
   const [loading, setLoading] = useState(true)
   const [event, setEvent] = useState<any>(null)
@@ -40,8 +40,12 @@ export default function Scorer() {
       if (!ev) { setLoading(false); return }
       setEvent(ev)
       const m = await getOrCreateMatch({ id: ev.id, category: ev.category, title: ev.title, prize_pool: ev.prize_pool })
-      // Mark the event live so it surfaces in the Live ticker for participants.
-      if (ev.status !== 'live') await supabase.from('events').update({ status: 'live' }).eq('id', ev.id)
+      // Mark the event live so it surfaces in the Live ticker — but NEVER reopen a
+      // completed event. Once ended, scoring stays closed.
+      if (ev.status === 'upcoming') {
+        await supabase.from('events').update({ status: 'live' }).eq('id', ev.id)
+        ev.status = 'live'
+      }
       setMatch(m); setTeamA(m.team_a); setTeamB(m.team_b); setStatus(m.status)
       setPlayers(await listMatchPlayers(m.id))
       setRoster(await fetchEventRoster(ev.id))
@@ -51,6 +55,21 @@ export default function Scorer() {
   }, [id])
 
   const scores = teamScores(events)
+  const ended = event?.status === 'completed'
+
+  async function onEndMatch() {
+    Alert.alert('End Match', 'End live scoring and publish the final result?\n\nThe event will be marked completed and can no longer be scored.', [
+      { text: 'Keep scoring', style: 'cancel' },
+      {
+        text: 'End Match', style: 'destructive', onPress: async () => {
+          const result = `Full Time · ${teamA || 'Team A'} ${scores.a}–${scores.b} ${teamB || 'Team B'}`
+          await endMatch(event.id, match.id, result)
+          toast('Match ended. Final result published.', 'success')
+          router.back()
+        },
+      },
+    ])
+  }
 
   async function pushScores(evs: any[]) {
     const s = teamScores(evs)
@@ -58,6 +77,7 @@ export default function Scorer() {
   }
 
   async function record(action: ScoreAction, side: 'a' | 'b', player?: any) {
+    if (ended) { toast('This event has ended — scoring is closed.'); return }
     if (action.scope === 'player' && !player) { toast('Tap a player first, then the action.'); return }
     const statVal = action.statVal ?? (action.points > 0 ? action.points : 1)
     const row = {
@@ -140,6 +160,13 @@ export default function Scorer() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        {ended && (
+          <View style={{ backgroundColor: '#F4F4F5', borderRadius: 12, padding: 12, marginBottom: 14 }}>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: '#52525B' }}>
+              This event has ended. Scoring is closed — this is a read-only view of the final result.
+            </Text>
+          </View>
+        )}
         {/* Score */}
         <View style={{ backgroundColor: '#000', borderRadius: 16, padding: 18, marginBottom: 14, flexDirection: 'row', alignItems: 'center' }}>
           <View style={{ flex: 1, alignItems: 'center' }}>
@@ -253,6 +280,13 @@ export default function Scorer() {
             </Pressable>
           </View>
         </View>
+
+        {/* End match — closes scoring and publishes the final result */}
+        {!ended && (
+          <Pressable onPress={onEndMatch} style={{ marginTop: 16, paddingVertical: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#000', alignItems: 'center' }}>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: '#000' }}>End Match & Publish Result</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </SafeAreaView>
   )

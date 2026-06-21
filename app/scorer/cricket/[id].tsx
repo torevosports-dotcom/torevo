@@ -14,6 +14,7 @@ export default function CricketScorer() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const getOrCreateMatch = useEventStore(s => s.getOrCreateMatch)
   const fetchEventRoster = useEventStore(s => s.fetchEventRoster)
+  const endMatch = useEventStore(s => s.endMatch)
 
   const [loading, setLoading] = useState(true)
   const [event, setEvent] = useState<any>(null)
@@ -122,6 +123,8 @@ export default function CricketScorer() {
         const result = chased ? `${battingTeam} won` : `${battingTeam} lost by ${(cm.target! - 1) - nextInn.runs} runs`
         await patchCm({ status: 'done', result, striker: st, non_striker: ns })
         await mirror(nextInn, 'Completed')
+        // Close live scoring and mark the event completed (single source of truth).
+        await endMatch(event.id, cm.live_match_id, result)
       }
       return
     }

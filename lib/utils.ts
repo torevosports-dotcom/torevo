@@ -63,7 +63,7 @@ export const THEME = {
 }
 
 const UNS = 'https://images.unsplash.com/photo'
-const IMG = (id: string): ImageSourcePropType => ({ uri: `${UNS}-${id}?w=800&h=400&fit=crop&auto=format&q=80` })
+const IMG = (id: string): ImageSourcePropType => ({ uri: `${UNS}-${id}?w=480&h=640&fit=crop&auto=format&q=60` })
 
 // Event COVER images. Kept deliberately separate from the BY SPORT browse images
 // (assets/sports/*.png) — covers use remote photos so the browse art is used nowhere else.

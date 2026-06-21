@@ -34,6 +34,9 @@ interface EventStore {
   assignUmpire: (eventId: string, phone: string) => Promise<{ linked: boolean }>
   getOrCreateMatch: (event: any) => Promise<any>
   saveMatch: (matchId: string, fields: any) => Promise<void>
+  endMatch: (eventId: string, matchId: string | null, resultLabel?: string) => Promise<void>
+  fetchEventMatch: (eventId: string) => Promise<{ event: any; match: any; isLive: boolean }>
+  subscribeToEventMatch: (matchId: string, onChange: () => void) => () => void
   listMatchPlayers: (matchId: string) => Promise<any[]>
   addMatchPlayer: (matchId: string, p: { name: string; phone?: string; team_side: 'a' | 'b' }) => Promise<any>
   bumpPlayer: (rowId: string, score: number, detail: string, stats?: any) => Promise<void>
@@ -272,6 +275,38 @@ export const useEventStore = create<EventStore>((set, get) => ({
 
   saveMatch: async (matchId, fields) => {
     await supabase.from('live_matches').update(fields).eq('id', matchId)
+  },
+
+  // End a match: stop live scoring AND mark the event completed. After this the
+  // event drops out of every "live" surface and the scorer is read-only.
+  endMatch: async (eventId, matchId, resultLabel) => {
+    if (matchId) await supabase.from('live_matches').update({ is_live: false, status: resultLabel || 'Full Time' }).eq('id', matchId)
+    if (eventId) await supabase.from('events').update({ status: 'completed' }).eq('id', eventId)
+    get().fetchLiveMatches()
+  },
+
+  // Fetch a single event's match (live OR already finished) for the viewer screen.
+  // Returns { event, match, isLive } — match is null if the host never started one.
+  fetchEventMatch: async (eventId) => {
+    const { data: ev } = await supabase.from('events').select('*').eq('id', eventId).single()
+    const { data: m } = await supabase.from('live_matches').select('*').eq('event_id', eventId).maybeSingle()
+    if (!m) return { event: ev, match: null, isLive: false }
+    const [{ data: updates }, { data: players }] = await Promise.all([
+      supabase.from('live_match_updates').select('*').eq('match_id', m.id).order('created_at', { ascending: false }),
+      supabase.from('match_players').select('*').eq('match_id', m.id).order('sort_order', { ascending: true }),
+    ])
+    return { event: ev, match: mapLiveMatch(m, updates ?? [], players ?? []), isLive: !!m.is_live }
+  },
+
+  // Realtime for ONE match — used by the per-event viewer so it only wakes for its match.
+  subscribeToEventMatch: (matchId, onChange) => {
+    const channel = supabase
+      .channel('event_match_' + Math.random().toString(36).slice(2))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_matches', filter: `id=eq.${matchId}` }, onChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_match_updates', filter: `match_id=eq.${matchId}` }, onChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_players', filter: `match_id=eq.${matchId}` }, onChange)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
   },
 
   listMatchPlayers: async (matchId) => {
