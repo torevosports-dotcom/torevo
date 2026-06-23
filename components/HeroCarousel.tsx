@@ -1,6 +1,6 @@
-import { View, Text, Pressable, Image, Dimensions } from 'react-native'
+import { View, Text, Pressable, Image, Dimensions, FlatList } from 'react-native'
 import { Plus, Play, Award } from 'lucide-react-native'
-import Animated, { useAnimatedRef, useFrameCallback, useSharedValue, scrollTo } from 'react-native-reanimated'
+import { useEffect, useRef } from 'react'
 import { categoryMeta, formatCurrency } from '../lib/utils'
 import { toast } from '../stores/toastStore'
 import type { EventCategory } from '../lib/types'
@@ -10,8 +10,9 @@ const GAP = 12
 const CARD_W = W - 44                 // a sliver of the next card peeks on the right
 const CARD_H = Math.min(Math.round(CARD_W * 1.12), 480)
 const SNAP = CARD_W + GAP
-const SPEED = 42                      // px/sec — gentle continuous glide
-const RESUME_MS = 5000                // wait after a manual swipe before auto-scroll resumes
+const INTERVAL_MS = 3800              // auto-advance one card every ~3.8s (JioHotstar feel)
+const RESUME_MS = 6000               // pause auto-advance for a bit after a manual swipe
+const SLIDE_MS = 420                 // ~ duration of the animated snap before a seamless reset
 
 // JioHotstar-style hero card.
 function HeroCard({ event, rank, onPress }: { event: any; rank: number; onPress: () => void }) {
@@ -63,50 +64,65 @@ function HeroCard({ event, rank, onPress }: { event: any; rank: number; onPress:
   )
 }
 
-// Continuous, seamless horizontal LOOP (matches the reference motion graphic):
-// content is duplicated and the scroll position wraps, so it glides forever.
-// Pauses while you touch, resumes a few seconds after you let go.
+// JioHotstar spotlight: auto-advances ONE card at a time with a smooth snap,
+// next card peeking, and loops seamlessly (data duplicated; offset resets at the
+// seam so it never jumps). Swiping pauses auto-advance, then it resumes.
 export default function HeroCarousel({ items, onPress }: { items: any[]; onPress: (id: string) => void }) {
-  const aref = useAnimatedRef<Animated.ScrollView>()
-  const x = useSharedValue(0)
-  const paused = useSharedValue(false)
+  const ref = useRef<FlatList<any>>(null)
+  const idx = useRef(0)
+  const pausedUntil = useRef(0)
   const loop = items.length > 1
-  const setWidth = items.length * SNAP
   const data = loop ? [...items, ...items] : items
 
-  useFrameCallback((frame) => {
-    'worklet'
-    if (!loop || paused.value) return
-    const dt = (frame.timeSincePreviousFrame ?? 16) / 1000
-    let nx = x.value + dt * SPEED
-    if (nx >= setWidth) nx -= setWidth
-    x.value = nx
-    scrollTo(aref, nx, 0, false)
-  })
+  useEffect(() => {
+    if (!loop) return
+    const t = setInterval(() => {
+      if (Date.now() < pausedUntil.current) return
+      const next = idx.current + 1
+      idx.current = next
+      ref.current?.scrollToOffset({ offset: next * SNAP, animated: true })
+      // reached the first card of the duplicate set → snap back to the original
+      // (identical content) without animation, so the loop is seamless.
+      if (next >= items.length) {
+        setTimeout(() => {
+          idx.current = next - items.length
+          ref.current?.scrollToOffset({ offset: idx.current * SNAP, animated: false })
+        }, SLIDE_MS)
+      }
+    }, INTERVAL_MS)
+    return () => clearInterval(t)
+  }, [items.length])
 
-  const pause = () => { paused.value = true }
-  const resume = (e: any) => {
-    const off = e?.nativeEvent?.contentOffset?.x ?? 0
-    x.value = loop ? off % setWidth : off
-    setTimeout(() => { paused.value = false }, RESUME_MS)
+  const onSettle = (e: any) => {
+    const i = Math.round(e.nativeEvent.contentOffset.x / SNAP)
+    idx.current = i
+    pausedUntil.current = Date.now() + RESUME_MS
+    if (loop && i >= items.length) {
+      idx.current = i - items.length
+      ref.current?.scrollToOffset({ offset: idx.current * SNAP, animated: false })
+    }
   }
 
   if (!items.length) return null
 
   return (
-    <Animated.ScrollView
-      ref={aref}
+    <FlatList
+      ref={ref}
+      data={data}
       horizontal
       showsHorizontalScrollIndicator={false}
-      scrollEventThrottle={16}
+      snapToInterval={SNAP}
+      snapToAlignment="start"
+      decelerationRate="fast"
+      disableIntervalMomentum
       contentContainerStyle={{ paddingLeft: 16, paddingRight: 4 }}
-      onScrollBeginDrag={pause}
-      onScrollEndDrag={resume}
-      onMomentumScrollEnd={resume}
-    >
-      {data.map((item, i) => (
-        <HeroCard key={`${item.id}-${i}`} event={item} rank={(i % items.length) + 1} onPress={() => onPress(item.id)} />
-      ))}
-    </Animated.ScrollView>
+      keyExtractor={(e, i) => `${e.id}-${i}`}
+      onScrollBeginDrag={() => { pausedUntil.current = Date.now() + RESUME_MS }}
+      onMomentumScrollEnd={onSettle}
+      initialNumToRender={2}
+      maxToRenderPerBatch={3}
+      windowSize={5}
+      renderItem={({ item, index }) => <HeroCard event={item} rank={(index % items.length) + 1} onPress={() => onPress(item.id)} />}
+    />
   )
 }
