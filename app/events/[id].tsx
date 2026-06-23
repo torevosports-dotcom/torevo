@@ -1,9 +1,10 @@
 import { ScrollView, View, Text, Pressable, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image, Linking, Share } from 'react-native'
 import { toast } from '../../stores/toastStore'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ArrowLeft, MapPin, Users, Trophy, Shield, Clock, ChevronRight, CheckCircle2, Navigation, Share2 } from 'lucide-react-native'
+import { ArrowLeft, MapPin, Users, Trophy, Shield, Clock, ChevronRight, CheckCircle2, Navigation, Share2, Bell, BellRing } from 'lucide-react-native'
 import * as Location from 'expo-location'
 import { directionsUrl, mapViewUrl, haversineKm, formatDistance } from '../../lib/geo'
+import { setReminder, cancelReminder, isReminderSet } from '../../lib/notify'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useState, useEffect } from 'react'
@@ -43,6 +44,7 @@ export default function EventDetailScreen() {
   const [upiId, setUpiId] = useState('')
   const [paying, setPaying] = useState(false)
   const [distanceKm, setDistanceKm] = useState<number | null>(null)
+  const [reminderOn, setReminderOn] = useState(false)
 
   useEffect(() => {
     if (events.length === 0) fetchEvents()
@@ -62,6 +64,22 @@ export default function EventDetailScreen() {
       } catch {}
     })()
   }, [events, id])
+
+  // Reflect whether a reminder is already scheduled for this event.
+  useEffect(() => { if (id) isReminderSet(id).then(setReminderOn) }, [id])
+
+  const toggleReminder = async (ev: any) => {
+    if (reminderOn) {
+      await cancelReminder(ev.id)
+      setReminderOn(false)
+      toast('Reminder turned off.', 'success')
+      return
+    }
+    const res = await setReminder(ev)
+    if (res === 'set') { setReminderOn(true); toast("We'll remind you before it starts.", 'success') }
+    else if (res === 'denied') toast('Enable notifications to get reminders.', 'error')
+    else toast('This event has already started.', 'error')
+  }
 
   const openDirections = (loc: any) => Linking.openURL(directionsUrl(loc)).catch(() => toast('Could not open Maps.', 'error'))
   const shareLocation = (ev: any) =>
@@ -326,6 +344,22 @@ export default function EventDetailScreen() {
                   </Pressable>
                 </View>
               </View>
+
+              {/* Notify me — local reminders before the event */}
+              <Pressable
+                onPress={() => toggleReminder(event)}
+                style={{ marginHorizontal: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 13, paddingHorizontal: 14, borderRadius: 14, backgroundColor: reminderOn ? '#0A0A0A' : '#F4F4F5', borderWidth: 1.5, borderColor: reminderOn ? '#0A0A0A' : '#E4E4E7' }}
+              >
+                {reminderOn ? <BellRing size={17} color="#fff" /> : <Bell size={17} color="#09090B" />}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13.5, color: reminderOn ? '#fff' : '#09090B' }}>
+                    {reminderOn ? "Reminder on — you'll be notified" : 'Notify me before this event'}
+                  </Text>
+                  <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: reminderOn ? 'rgba(255,255,255,0.6)' : '#A1A1AA', marginTop: 1 }}>
+                    {reminderOn ? 'Tap to turn off' : 'Get a reminder 1 day & 1 hour before'}
+                  </Text>
+                </View>
+              </Pressable>
 
               {/* Fill bar */}
               <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>

@@ -9,7 +9,7 @@ import { useEventStore } from '../../stores/eventStore'
 import { useAuthStore } from '../../stores/authStore'
 import { categoryMeta, formatCurrency, THEME } from '../../lib/utils'
 import type { EventCategory } from '../../lib/types'
-import ExpandingSelector from '../../components/ExpandingSelector'
+import HeroCarousel from '../../components/HeroCarousel'
 import CitySelector, { matchesCity } from '../../components/CitySelector'
 import { useUiStore } from '../../stores/uiStore'
 
@@ -221,10 +221,10 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 36 }}>
-        {/* ── TOP SLIDES — expanding-panel selector (auto-rotates, no dots) ── */}
+        {/* ── TOP SLIDES — JioHotstar-style hero (peek, ranking pill, +/play; no dots) ── */}
         {heroItems.length > 0 && (
-          <Animated.View entering={FadeIn} style={{ marginTop: 2 }}>
-            <ExpandingSelector items={heroItems} onPress={goEvent} />
+          <Animated.View entering={FadeIn} style={{ marginTop: 4 }}>
+            <HeroCarousel items={heroItems} onPress={goEvent} />
           </Animated.View>
         )}
 
