@@ -32,6 +32,8 @@ export function mapEvent(
       address: row.venue_address,
       city: row.city,
       state: row.state,
+      lat: (row as any).lat ?? undefined,
+      lng: (row as any).lng ?? undefined,
     },
     max_participants: row.max_participants,
     current_participants: row.current_participants,

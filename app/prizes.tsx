@@ -16,7 +16,7 @@ export default function PrizesScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, height: 56 }}>
         <Pressable
-          onPress={() => router.canGoBack() ? router.back() : router.push('/')}
+          onPress={() => router.canGoBack() ? router.back() : router.navigate('/')}
           style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F4F4F5', alignItems: 'center', justifyContent: 'center' }}
         >
           <ChevronLeft size={18} color="#09090B" />

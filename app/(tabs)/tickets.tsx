@@ -53,7 +53,7 @@ export default function TicketsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: THEME.bg }}>
       {/* Header */}
       <View style={{ backgroundColor: THEME.card, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: THEME.border }}>
-        <Pressable onPress={() => router.push('/' as any)} style={{ marginBottom: 12 }}>
+        <Pressable onPress={() => router.navigate('/' as any)} style={{ marginBottom: 12 }}>
           <Image source={require('../../assets/logo_h.png')} style={{ width: 104, height: 30 }} resizeMode="contain" />
         </Pressable>
         <Text style={{ fontFamily: 'Inter_900Black', fontSize: 22, color: THEME.text, marginBottom: 14 }}>My Tickets</Text>
@@ -132,7 +132,7 @@ export default function TicketsScreen() {
               Register for events to see them here
             </Text>
             <Pressable
-              onPress={() => router.push('/discover' as any)}
+              onPress={() => router.navigate('/discover' as any)}
               style={{ marginTop: 20, backgroundColor: THEME.orange, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 }}
             >
               <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: 'white' }}>Browse Events</Text>

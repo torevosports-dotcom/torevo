@@ -26,7 +26,7 @@ export default function SearchScreen() {
       {/* Search bar header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 10 }}>
         <Pressable
-          onPress={() => router.canGoBack() ? router.back() : router.push('/')}
+          onPress={() => router.canGoBack() ? router.back() : router.navigate('/')}
           style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F4F4F5', alignItems: 'center', justifyContent: 'center' }}
         >
           <ChevronLeft size={18} color="#09090B" />

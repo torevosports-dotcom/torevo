@@ -1,7 +1,9 @@
-import { ScrollView, View, Text, Pressable, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image } from 'react-native'
+import { ScrollView, View, Text, Pressable, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image, Linking, Share } from 'react-native'
 import { toast } from '../../stores/toastStore'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ArrowLeft, MapPin, Users, Trophy, Shield, Clock, ChevronRight, CheckCircle2 } from 'lucide-react-native'
+import { ArrowLeft, MapPin, Users, Trophy, Shield, Clock, ChevronRight, CheckCircle2, Navigation, Share2 } from 'lucide-react-native'
+import * as Location from 'expo-location'
+import { directionsUrl, mapViewUrl, haversineKm, formatDistance } from '../../lib/geo'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useState, useEffect } from 'react'
@@ -40,10 +42,30 @@ export default function EventDetailScreen() {
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'upi' | 'card'>('wallet')
   const [upiId, setUpiId] = useState('')
   const [paying, setPaying] = useState(false)
+  const [distanceKm, setDistanceKm] = useState<number | null>(null)
 
   useEffect(() => {
     if (events.length === 0) fetchEvents()
   }, [])
+
+  // Best-effort "X km away" — only if the event has a pinned location.
+  useEffect(() => {
+    const ev = events.find((e) => e.id === id)
+    const lat = ev?.location?.lat, lng = ev?.location?.lng
+    if (typeof lat !== 'number' || typeof lng !== 'number') return
+    ;(async () => {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync()
+        if (status !== 'granted') return
+        const pos = await Location.getLastKnownPositionAsync() ?? await Location.getCurrentPositionAsync({})
+        if (pos) setDistanceKm(haversineKm(pos.coords.latitude, pos.coords.longitude, lat, lng))
+      } catch {}
+    })()
+  }, [events, id])
+
+  const openDirections = (loc: any) => Linking.openURL(directionsUrl(loc)).catch(() => toast('Could not open Maps.', 'error'))
+  const shareLocation = (ev: any) =>
+    Share.share({ message: `${ev.title}\n${ev.location.venue_name}, ${ev.location.city}\n${mapViewUrl(ev.location)}` }).catch(() => {})
 
   // For team events: seed the roster inputs and detect an existing registration.
   useEffect(() => {
@@ -195,7 +217,7 @@ export default function EventDetailScreen() {
             </Text>
           </View>
 
-          <Pressable onPress={() => router.push('/(tabs)/tickets' as any)} style={{ marginTop: 16, width: '100%', backgroundColor: THEME.orange, paddingVertical: 16, borderRadius: 18, alignItems: 'center' }}>
+          <Pressable onPress={() => router.navigate('/tickets' as any)} style={{ marginTop: 16, width: '100%', backgroundColor: THEME.orange, paddingVertical: 16, borderRadius: 18, alignItems: 'center' }}>
             <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: 'white' }}>View My Ticket</Text>
           </Pressable>
           {event.team_config && (
@@ -203,7 +225,7 @@ export default function EventDetailScreen() {
               <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: '#09090B' }}>Manage Team Roster</Text>
             </Pressable>
           )}
-          <Pressable onPress={() => router.canGoBack() ? router.back() : router.push('/')} style={{ marginTop: 10, paddingVertical: 8 }}>
+          <Pressable onPress={() => router.canGoBack() ? router.back() : router.navigate('/')} style={{ marginTop: 10, paddingVertical: 8 }}>
             <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#A1A1AA' }}>Back to events</Text>
           </Pressable>
         </Animated.View>
@@ -216,7 +238,7 @@ export default function EventDetailScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         {/* Back bar */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 52 }}>
-          <Pressable onPress={() => step !== 'view' ? setStep('view') : (router.canGoBack() ? router.back() : router.push('/'))} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F4F4F5', alignItems: 'center', justifyContent: 'center' }}>
+          <Pressable onPress={() => step !== 'view' ? setStep('view') : (router.canGoBack() ? router.back() : router.navigate('/'))} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F4F4F5', alignItems: 'center', justifyContent: 'center' }}>
             <ArrowLeft size={18} color="#09090B" />
           </Pressable>
           <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: '#09090B' }}>
@@ -278,6 +300,31 @@ export default function EventDetailScreen() {
                     <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#3F3F46', flex: 1 }}>{text}</Text>
                   </View>
                 ))}
+              </View>
+
+              {/* Location card — directions + share (no Google API key) */}
+              <View style={{ marginHorizontal: 16, marginBottom: 16, borderRadius: 16, borderWidth: 1, borderColor: '#E4E4E7', overflow: 'hidden' }}>
+                <View style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#0A0A0A', alignItems: 'center', justifyContent: 'center' }}>
+                    <MapPin size={17} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text numberOfLines={1} style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: '#09090B' }}>{event.location.venue_name}</Text>
+                    <Text numberOfLines={1} style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: '#71717A', marginTop: 1 }}>
+                      {event.location.city}{distanceKm != null ? `  ·  ${formatDistance(distanceKm)}` : ''}
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#F0F0F0' }}>
+                  <Pressable onPress={() => openDirections(event.location)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 13, backgroundColor: '#0A0A0A' }}>
+                    <Navigation size={15} color="#fff" />
+                    <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: '#fff' }}>Get Directions</Text>
+                  </Pressable>
+                  <Pressable onPress={() => shareLocation(event)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 13, paddingHorizontal: 18 }}>
+                    <Share2 size={15} color="#09090B" />
+                    <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: '#09090B' }}>Share</Text>
+                  </Pressable>
+                </View>
               </View>
 
               {/* Fill bar */}

@@ -1,6 +1,6 @@
 import { ScrollView, View, Text, Pressable, TextInput, ActivityIndicator, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ChevronLeft, Send, UserPlus, RotateCcw } from 'lucide-react-native'
+import { ChevronLeft, Send, UserPlus, RotateCcw, Pencil, Check, X } from 'lucide-react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
@@ -26,6 +26,17 @@ export default function Scorer() {
   const [teamA, setTeamA] = useState(''), [teamB, setTeamB] = useState(''), [status, setStatus] = useState('')
   const [pName, setPName] = useState(''), [pPhone, setPPhone] = useState(''), [pSide, setPSide] = useState<'a' | 'b'>('a')
   const [comment, setComment] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+
+  async function renamePlayer(rowId: string) {
+    const name = editName.trim()
+    if (!name) return
+    await supabase.from('match_players').update({ player_name: name }).eq('id', rowId)
+    setPlayers(ps => ps.map(p => p.id === rowId ? { ...p, player_name: name } : p))
+    setEditingId(null); setEditName('')
+    toast('Player name updated.', 'success')
+  }
 
   const cfg = sportConfig(event?.category ?? 'other')
 
@@ -201,10 +212,22 @@ export default function Scorer() {
             {teamPlayers(side).length === 0 && <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: THEME.textTertiary, marginBottom: 8 }}>No players yet.</Text>}
             {teamPlayers(side).map(row => {
               const on = selected === row.id
+              if (editingId === row.id) {
+                return (
+                  <View key={row.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <TextInput value={editName} onChangeText={setEditName} autoFocus placeholder="Player name" placeholderTextColor={THEME.textTertiary} style={[input, { flex: 1 }]} />
+                    <Pressable onPress={() => renamePlayer(row.id)} style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}><Check size={16} color="#fff" /></Pressable>
+                    <Pressable onPress={() => { setEditingId(null); setEditName('') }} style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: '#EFEFEF', alignItems: 'center', justifyContent: 'center' }}><X size={16} color={THEME.text} /></Pressable>
+                  </View>
+                )
+              }
               return (
                 <Pressable key={row.id} onPress={() => setSelected(on ? null : row.id)}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, paddingHorizontal: 10, borderRadius: 10, marginBottom: 6, backgroundColor: on ? '#000' : '#F7F7F7' }}>
                   <Text style={{ flex: 1, fontFamily: 'Inter_600SemiBold', fontSize: 13, color: on ? '#fff' : THEME.text }}>{row.player_name}</Text>
+                  <Pressable onPress={() => { setEditingId(row.id); setEditName(row.player_name) }} hitSlop={8} style={{ padding: 2 }}>
+                    <Pencil size={13} color={on ? 'rgba(255,255,255,0.7)' : THEME.textTertiary} />
+                  </Pressable>
                   <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: on ? 'rgba(255,255,255,0.7)' : THEME.textTertiary }}>{row.detail || '—'}</Text>
                   <Text style={{ fontFamily: 'Inter_900Black', fontSize: 16, color: on ? '#fff' : THEME.text }}>{row.score}</Text>
                 </Pressable>

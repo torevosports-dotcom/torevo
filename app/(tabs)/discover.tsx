@@ -68,7 +68,7 @@ export default function DiscoverScreen() {
       <View style={{ backgroundColor: THEME.card, borderBottomWidth: 1, borderBottomColor: THEME.border }}>
         {/* Title row */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10 }}>
-          <Pressable onPress={() => router.push('/' as any)}>
+          <Pressable onPress={() => router.navigate('/' as any)}>
             <Image source={require('../../assets/logo_h.png')} style={{ width: 104, height: 30 }} resizeMode="contain" />
           </Pressable>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: '#F0F0F0' }}>

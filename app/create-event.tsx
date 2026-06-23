@@ -1,7 +1,8 @@
 import { ScrollView, View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, Image, Alert, ActivityIndicator } from 'react-native'
 import { toast } from '../stores/toastStore'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { X, ChevronRight, CheckCircle2 } from 'lucide-react-native'
+import { X, ChevronRight, CheckCircle2, MapPin } from 'lucide-react-native'
+import * as Location from 'expo-location'
 import Animated, { FadeInRight, FadeInDown, FadeOutLeft } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { useState, useEffect } from 'react'
@@ -50,6 +51,24 @@ export default function CreateEventScreen() {
   const [time, setTime] = useState('')
   const [description, setDescription] = useState('')
   const [paymentType, setPaymentType] = useState<'one-time' | 'escrow'>('escrow')
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [locating, setLocating] = useState(false)
+
+  // Capture the exact venue coordinates via GPS — no Google API key needed.
+  async function useMyLocation() {
+    setLocating(true)
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== 'granted') { toast('Location permission denied.', 'error'); return }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High })
+      setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+      toast('Exact location pinned to this spot.', 'success')
+    } catch {
+      toast('Could not get your location. Try again.', 'error')
+    } finally {
+      setLocating(false)
+    }
+  }
 
   // When the sport changes, default the format + squad size to that game.
   useEffect(() => {
@@ -102,6 +121,7 @@ export default function CreateEventScreen() {
         venue_address: venue,
         city: user.city ?? 'India',
         state: '',
+        ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
         max_participants: maxP || 16,
         current_participants: 0,
         format,
@@ -335,6 +355,23 @@ export default function CreateEventScreen() {
                   )}
                 </View>
               ))}
+
+              {/* Exact location pin (optional, no API cost) */}
+              <Pressable
+                onPress={useMyLocation}
+                disabled={locating}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14, marginBottom: 16, backgroundColor: coords ? '#0A0A0A' : '#F4F4F5', borderWidth: 1.5, borderColor: coords ? '#0A0A0A' : '#E4E4E7' }}
+              >
+                {locating ? <ActivityIndicator size="small" color={coords ? '#fff' : '#09090B'} /> : <MapPin size={16} color={coords ? '#fff' : '#09090B'} />}
+                <Text style={{ flex: 1, fontFamily: 'Inter_700Bold', fontSize: 13, color: coords ? '#fff' : '#09090B' }}>
+                  {coords ? 'Exact location pinned ✓' : 'Pin exact location (use my GPS)'}
+                </Text>
+                {coords && (
+                  <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>
+                    {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
+                  </Text>
+                )}
+              </Pressable>
 
               {/* Format selector */}
               <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 13, color: '#09090B', marginBottom: 6 }}>Format</Text>

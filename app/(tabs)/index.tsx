@@ -9,6 +9,9 @@ import { useEventStore } from '../../stores/eventStore'
 import { useAuthStore } from '../../stores/authStore'
 import { categoryMeta, formatCurrency, THEME } from '../../lib/utils'
 import type { EventCategory } from '../../lib/types'
+import ExpandingSelector from '../../components/ExpandingSelector'
+import CitySelector, { matchesCity } from '../../components/CitySelector'
+import { useUiStore } from '../../stores/uiStore'
 
 const { width: W } = Dimensions.get('window')
 const HGAP = 14
@@ -148,6 +151,7 @@ export default function HomeScreen() {
   const liveMatches = useEventStore((s) => s.liveMatches)
   const fetchLiveMatches = useEventStore((s) => s.fetchLiveMatches)
   const subscribeToLiveMatches = useEventStore((s) => s.subscribeToLiveMatches)
+  const city = useUiStore((s) => s.city)
 
   useEffect(() => {
     fetchEvents()
@@ -162,28 +166,15 @@ export default function HomeScreen() {
   const { heroItems, trending, freeEvents, prizeEvents, soon } = useMemo(() => {
     let pool = events.filter((e) => e.status !== 'completed' && e.status !== 'cancelled')
     if (activeCategory !== 'all') pool = pool.filter((e) => e.category === activeCategory)
+    pool = pool.filter((e) => matchesCity(e.location?.city, city))
     return {
-      heroItems: [...pool].sort((a, b) => (b.prize_pool - a.prize_pool) || (b.current_participants - a.current_participants)).slice(0, 6),
+      heroItems: [...pool].sort((a, b) => (b.prize_pool - a.prize_pool) || (b.current_participants - a.current_participants)).slice(0, 5),
       trending: [...pool].sort((a, b) => b.current_participants - a.current_participants).slice(0, 10),
       freeEvents: pool.filter((e) => e.entry_fee === 0).slice(0, 10),
       prizeEvents: [...pool].filter((e) => e.prize_pool > 0).sort((a, b) => b.prize_pool - a.prize_pool).slice(0, 10),
       soon: [...pool].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 10),
     }
-  }, [events, activeCategory])
-
-  const heroRef = useRef<FlatList<any>>(null)
-  const [heroPage, setHeroPage] = useState(0)
-  useEffect(() => {
-    if (heroItems.length < 2) return
-    const t = setInterval(() => {
-      setHeroPage((p) => {
-        const n = (p + 1) % heroItems.length
-        heroRef.current?.scrollToOffset({ offset: n * SNAP, animated: true })
-        return n
-      })
-    }, 4000)
-    return () => clearInterval(t)
-  }, [heroItems.length])
+  }, [events, activeCategory, city])
 
   const initials = user?.name?.split(' ').map((n) => n[0]).join('').slice(0, 2) ?? 'U'
   const goEvent = (id: string) => router.push(`/events/${id}` as any)
@@ -200,10 +191,15 @@ export default function HomeScreen() {
           <Pressable style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: THEME.border }}>
             <Bell size={18} color={THEME.text} strokeWidth={1.9} />
           </Pressable>
-          <Pressable onPress={() => router.push('/profile' as any)} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
+          <Pressable onPress={() => router.navigate('/profile' as any)} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: '#fff' }}>{initials}</Text>
           </Pressable>
         </View>
+      </View>
+
+      {/* Location bar (Playo-style city picker) */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 2 }}>
+        <CitySelector />
       </View>
 
       {/* Category chips */}
@@ -225,70 +221,18 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 36 }}>
-        {/* ── IMMERSIVE HERO ── */}
+        {/* ── TOP SLIDES — expanding-panel selector (auto-rotates, no dots) ── */}
         {heroItems.length > 0 && (
           <Animated.View entering={FadeIn} style={{ marginTop: 2 }}>
-            <FlatList
-              ref={heroRef}
-              data={heroItems}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              snapToInterval={SNAP}
-              snapToAlignment="start"
-              decelerationRate="fast"
-              contentContainerStyle={{ paddingHorizontal: SIDE }}
-              initialNumToRender={2}
-              maxToRenderPerBatch={3}
-              windowSize={5}
-              keyExtractor={(e) => e.id}
-              onMomentumScrollEnd={(e) => setHeroPage(Math.round(e.nativeEvent.contentOffset.x / SNAP))}
-              onScrollToIndexFailed={() => {}}
-              renderItem={({ item }) => {
-                const m = categoryMeta[item.category as EventCategory] ?? categoryMeta.other
-                return (
-                  <Pressable onPress={() => goEvent(item.id)} style={{ width: CARD_W, height: CARD_H, marginRight: HGAP, borderRadius: 22, overflow: 'hidden', backgroundColor: '#111' }}>
-                    <Image source={m.image} style={{ position: 'absolute', width: '100%', height: '100%' }} resizeMode="cover" />
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '34%', backgroundColor: 'rgba(0,0,0,0.25)' }} />
-                    <Shade />
-                    <View style={{ position: 'absolute', top: 14, left: 20 }}>
-                      {item.status === 'live' ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#000', paddingHorizontal: 11, paddingVertical: 6, borderRadius: 20 }}>
-                          <LiveDot /><Text style={{ fontFamily: 'Inter_900Black', fontSize: 10, color: '#fff', letterSpacing: 1 }}>LIVE</Text>
-                        </View>
-                      ) : item.prize_pool > 0 ? (
-                        <View style={{ backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 11, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }}>
-                          <Text style={{ fontFamily: 'Inter_900Black', fontSize: 10, color: '#fff', letterSpacing: 1 }}>{`🏆 ${formatCurrency(item.prize_pool)}`}</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                    <View style={{ position: 'absolute', bottom: 22, left: 18, right: 18 }}>
-                      <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11.5, color: 'rgba(255,255,255,0.75)', letterSpacing: 1.5, marginBottom: 8 }}>
-                        {m.label.toUpperCase()}  •  {item.location?.city}
-                      </Text>
-                      <Text numberOfLines={2} style={{ fontFamily: 'Inter_900Black', fontSize: 30, lineHeight: 33, color: '#fff', marginBottom: 14, letterSpacing: -0.5 }}>
-                        {item.title}
-                      </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <Pressable onPress={() => goEvent(item.id)} style={{ flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: '#fff', paddingHorizontal: 26, paddingVertical: 13, borderRadius: 8 }}>
-                          <Text style={{ fontFamily: 'Inter_900Black', fontSize: 14, color: '#000' }}>{item.entry_fee === 0 ? 'Register Free' : 'Register'}</Text>
-                        </Pressable>
-                        <Pressable onPress={() => goEvent(item.id)} style={{ paddingHorizontal: 20, paddingVertical: 13, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }}>
-                          <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: '#fff' }}>Details</Text>
-                        </Pressable>
-                      </View>
-                    </View>
-                  </Pressable>
-                )
-              }}
-            />
+            <ExpandingSelector items={heroItems} onPress={goEvent} />
           </Animated.View>
         )}
 
         {/* LIVE NOW */}
         {liveMatches.length > 0 && (
-          <Rail title="🔴 Live Now" data={liveMatches} onSeeAll={() => router.push('/live' as any)}
+          <Rail title="🔴 Live Now" data={liveMatches} onSeeAll={() => router.navigate('/live' as any)}
             render={(item) => (
-              <Pressable key={item.id} onPress={() => router.push('/live' as any)} style={{ width: 250, marginRight: 12, backgroundColor: '#000', borderRadius: 16, padding: 14 }}>
+              <Pressable key={item.id} onPress={() => router.push(`/match/${item.event_id}` as any)} style={{ width: 250, marginRight: 12, backgroundColor: '#000', borderRadius: 16, padding: 14 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                   <Text style={{ fontSize: 15 }}>{item.emoji}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.14)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 11 }}>
@@ -309,7 +253,7 @@ export default function HomeScreen() {
         )}
 
         {/* TRENDING — numbered posters */}
-        <Rail title="Trending Now" data={trending} onSeeAll={() => router.push('/discover' as any)}
+        <Rail title="Trending Now" data={trending} onSeeAll={() => router.navigate('/discover' as any)}
           render={(item, i) => <Poster key={item.id} event={item} rank={i + 1} onPress={() => goEvent(item.id)} />} />
 
         {/* BROWSE BY SPORT */}
@@ -318,7 +262,7 @@ export default function HomeScreen() {
           <FlatList horizontal showsHorizontalScrollIndicator={false} data={SPORTS_GRID} keyExtractor={(i) => i.key}
             contentContainerStyle={{ paddingHorizontal: 16 }}
             renderItem={({ item }) => (
-              <Pressable onPress={() => { setFilter('category', item.key as EventCategory); router.push('/discover' as any) }} style={{ width: 92, marginRight: 12 }}>
+              <Pressable onPress={() => { setFilter('category', item.key as EventCategory); router.navigate('/discover' as any) }} style={{ width: 92, marginRight: 12 }}>
                 <View style={{ width: 92, height: 92, borderRadius: 16, overflow: 'hidden', backgroundColor: '#111' }}>
                   <Image source={item.image} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                   <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '55%', backgroundColor: 'rgba(0,0,0,0.5)' }} />
@@ -328,16 +272,29 @@ export default function HomeScreen() {
             )} />
         </View>
 
+        {/* TOP PLAYERS entry */}
+        <Pressable onPress={() => router.navigate('/leaderboard' as any)}
+          style={{ marginHorizontal: 16, marginTop: 26, backgroundColor: '#000', borderRadius: 18, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 22 }}>🏆</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 16, color: '#fff' }}>Top Players</Text>
+            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>Leaderboards & career stats for every sport</Text>
+          </View>
+          <ChevronRight size={20} color="rgba(255,255,255,0.7)" />
+        </Pressable>
+
         {/* FREE ENTRY */}
-        <Rail title="Free Entry" data={freeEvents} onSeeAll={() => router.push('/discover' as any)}
+        <Rail title="Free Entry" data={freeEvents} onSeeAll={() => router.navigate('/discover' as any)}
           render={(item) => <Poster key={item.id} event={item} onPress={() => goEvent(item.id)} />} />
 
         {/* BIG PRIZE POOLS */}
-        <Rail title="Big Prize Pools" data={prizeEvents} onSeeAll={() => router.push('/discover' as any)}
+        <Rail title="Big Prize Pools" data={prizeEvents} onSeeAll={() => router.navigate('/discover' as any)}
           render={(item) => <Poster key={item.id} event={item} onPress={() => goEvent(item.id)} />} />
 
         {/* HAPPENING SOON */}
-        <Rail title="Happening Soon" data={soon} onSeeAll={() => router.push('/discover' as any)}
+        <Rail title="Happening Soon" data={soon} onSeeAll={() => router.navigate('/discover' as any)}
           render={(item) => <Poster key={item.id} event={item} onPress={() => goEvent(item.id)} />} />
 
         {heroItems.length === 0 && trending.length === 0 && (

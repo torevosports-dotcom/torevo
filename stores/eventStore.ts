@@ -25,6 +25,7 @@ interface EventStore {
   fetchTickets: (userId: string) => Promise<void>
   fetchLiveMatches: () => Promise<void>
   fetchMyScores: (userId: string) => Promise<void>
+  fetchTopPlayers: () => Promise<Record<string, any[]>>
 
   umpiringEvents: any[]
 
@@ -296,6 +297,37 @@ export const useEventStore = create<EventStore>((set, get) => ({
       supabase.from('match_players').select('*').eq('match_id', m.id).order('sort_order', { ascending: true }),
     ])
     return { event: ev, match: mapLiveMatch(m, updates ?? [], players ?? []), isLive: !!m.is_live }
+  },
+
+  // Leaderboard: aggregate every player's match appearances into career totals,
+  // grouped by sport/category. Keyed by player_id when known, else by name.
+  fetchTopPlayers: async () => {
+    const { data } = await supabase
+      .from('match_players')
+      .select('player_name, player_id, score, live_matches(category)')
+    if (!data) return {}
+    const agg: Record<string, any> = {}
+    for (const r of data as any[]) {
+      const cat = r.live_matches?.category ?? 'other'
+      const name = r.player_name || 'Unknown'
+      const key = cat + '|' + (r.player_id || name)
+      const cur = agg[key] || { name, category: cat, matches: 0, total: 0, best: 0 }
+      const s = Number(r.score) || 0
+      cur.matches += 1
+      cur.total += s
+      cur.best = Math.max(cur.best, s)
+      agg[key] = cur
+    }
+    const byCat: Record<string, any[]> = {}
+    for (const v of Object.values(agg)) {
+      v.avg = v.matches ? Math.round((v.total / v.matches) * 10) / 10 : 0
+      ;(byCat[v.category] ||= []).push(v)
+    }
+    for (const cat of Object.keys(byCat)) {
+      byCat[cat].sort((a, b) => b.total - a.total || b.best - a.best)
+      byCat[cat] = byCat[cat].slice(0, 25)
+    }
+    return byCat
   },
 
   // Realtime for ONE match — used by the per-event viewer so it only wakes for its match.

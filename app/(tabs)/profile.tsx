@@ -172,7 +172,7 @@ export default function ProfileScreen() {
         {!isHost && (
         <Animated.View entering={FadeInDown.delay(100).springify()} style={{ marginHorizontal: 16, marginTop: 12 }}>
           <Pressable
-            onPress={() => router.push('/host-dashboard' as any)}
+            onPress={() => router.navigate('/manage' as any)}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: THEME.card, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: THEME.border }}
           >
             <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>

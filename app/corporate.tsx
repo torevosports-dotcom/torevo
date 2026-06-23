@@ -40,7 +40,7 @@ export default function CorporateScreen() {
             <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: '#71717A', marginTop: 4 }}>{company}</Text>
           </View>
           <Pressable
-            onPress={() => router.canGoBack() ? router.back() : router.push('/')}
+            onPress={() => router.canGoBack() ? router.back() : router.navigate('/')}
             style={{ marginTop: 20, width: '100%', backgroundColor: '#09090B', paddingVertical: 16, borderRadius: 18, alignItems: 'center' }}
           >
             <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: 'white' }}>Back to Home</Text>
@@ -141,7 +141,7 @@ export default function CorporateScreen() {
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, height: 56 }}>
         <Pressable
-          onPress={() => router.canGoBack() ? router.back() : router.push('/')}
+          onPress={() => router.canGoBack() ? router.back() : router.navigate('/')}
           style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F4F4F5', alignItems: 'center', justifyContent: 'center' }}
         >
           <ChevronLeft size={18} color="#09090B" />

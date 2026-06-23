@@ -118,7 +118,7 @@ export default function HostDashboard() {
           </Pressable>
         )}
         <Text style={{ fontFamily: 'Inter_900Black', fontSize: 18, color: THEME.text, flex: 1 }}>My Events</Text>
-        <Pressable onPress={() => router.push('/profile')} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable onPress={() => router.navigate('/profile')} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: '#fff' }}>{(user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2)) ?? 'U'}</Text>
         </Pressable>
       </View>

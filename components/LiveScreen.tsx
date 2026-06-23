@@ -5,10 +5,12 @@ import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { useEffect } from 'react'
 import { useEventStore } from '../stores/eventStore'
+import { useUiStore } from '../stores/uiStore'
 import { formatCurrency } from '../lib/utils'
 
 export default function LiveScreen() {
   const router = useRouter()
+  const mode = useUiStore((s) => s.mode)
   const { liveMatches, fetchLiveMatches, subscribeToLiveMatches } = useEventStore()
 
   useEffect(() => {
@@ -17,38 +19,44 @@ export default function LiveScreen() {
     return unsubscribe
   }, [])
 
-  const mockLiveMatches = liveMatches
+  // Back is safe whether we arrived via the tab (no stack) or a push.
+  const goBack = () => (router.canGoBack() ? router.back() : router.navigate((mode === 'host' ? '/manage' : '/') as any))
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, height: 56 }}>
-        {router.canGoBack() && (
-          <Pressable
-            onPress={() => router.back()}
-            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F4F4F5', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <ChevronLeft size={18} color="#09090B" />
-          </Pressable>
-        )}
+        <Pressable
+          onPress={goBack}
+          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F4F4F5', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <ChevronLeft size={18} color="#09090B" />
+        </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={{ fontFamily: 'Inter_900Black', fontSize: 18, color: '#09090B' }}>Live Now</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#09090B' }}>
           <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: 'white' }} />
-          <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 12, color: 'white' }}>{mockLiveMatches.length} live</Text>
+          <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 12, color: 'white' }}>{liveMatches.length} live</Text>
         </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {mockLiveMatches.map((match, i) => {
+        {liveMatches.length === 0 && (
+          <View style={{ alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 }}>
+            <Text style={{ fontSize: 40, marginBottom: 10 }}>📺</Text>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: '#18181B' }}>No live matches right now</Text>
+            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#A1A1AA', textAlign: 'center', marginTop: 4 }}>Check back when an event is in progress.</Text>
+          </View>
+        )}
+        {liveMatches.map((match, i) => {
           const players = match.players ?? []
           const teamA = players.filter((p) => p.team_side === 'a')
           const teamB = players.filter((p) => p.team_side === 'b')
           return (
           <Animated.View key={match.id} entering={FadeInDown.delay(i * 80).springify()}>
             <Pressable
-              onPress={() => router.push(`/events/${match.event_id}` as any)}
+              onPress={() => router.push(`/match/${match.event_id}` as any)}
               style={{ marginHorizontal: 16, marginBottom: 16, borderRadius: 20, overflow: 'hidden', backgroundColor: '#09090B' }}
             >
               {/* Decoration blob */}

@@ -1,6 +1,7 @@
 import { Tabs, useRouter } from 'expo-router'
 import { View, Text, Pressable, Platform } from 'react-native'
 import { Home, Compass, Ticket, User, Plus, Trophy, Radio, Repeat } from 'lucide-react-native'
+import { useEffect } from 'react'
 import { useUiStore } from '../../stores/uiStore'
 
 const ACTIVE = '#000000'
@@ -60,7 +61,16 @@ function CenterToggle({ navigation }: any) {
 function TabBar({ state, navigation }: any) {
   const router = useRouter()
   const mode = useUiStore((s) => s.mode)
+  const setMode = useUiStore((s) => s.setMode)
   const current = state.routes[state.index]?.name
+
+  // Keep mode in sync with the visible screen so the footer never mismatches
+  // (e.g. landing on My Events should show the host footer). 'live'/'profile'
+  // are neutral — viewing them shouldn't flip the user's mode.
+  useEffect(() => {
+    if (current === 'manage' && mode !== 'host') setMode('host')
+    else if ((current === 'index' || current === 'discover' || current === 'tickets') && mode !== 'participant') setMode('participant')
+  }, [current])
 
   const PLAY = [
     { key: 'discover', label: 'Events', icon: Compass },
