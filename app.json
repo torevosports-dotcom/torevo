@@ -2,7 +2,7 @@
   "expo": {
     "name": "Torevo",
     "slug": "togo",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "runtimeVersion": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "app.torevo",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"

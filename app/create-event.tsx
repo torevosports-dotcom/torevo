@@ -207,7 +207,7 @@ export default function CreateEventScreen() {
           </View>
 
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => router.navigate('/manage' as any)}
             style={{
               marginTop: 20, width: '100%',
               backgroundColor: '#09090B',
@@ -215,10 +215,10 @@ export default function CreateEventScreen() {
               alignItems: 'center',
             }}
           >
-            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: 'white' }}>Go to Home</Text>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: 'white' }}>Go to My Events</Text>
           </Pressable>
-          <Pressable onPress={() => router.back()} style={{ marginTop: 12, paddingVertical: 8 }}>
-            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#A1A1AA' }}>Browse other events</Text>
+          <Pressable onPress={() => router.navigate('/' as any)} style={{ marginTop: 12, paddingVertical: 8 }}>
+            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#A1A1AA' }}>Back to Home</Text>
           </Pressable>
         </Animated.View>
       </SafeAreaView>
@@ -235,7 +235,7 @@ export default function CreateEventScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 56 }}>
           <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: '#09090B' }}>Create Event</Text>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => (router.canGoBack() ? router.back() : router.navigate('/manage' as any))}
             style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F4F4F5', alignItems: 'center', justifyContent: 'center' }}
           >
             <X size={18} color="#52525B" />
